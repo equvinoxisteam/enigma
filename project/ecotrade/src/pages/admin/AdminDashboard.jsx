@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchDashboardStats, fetchAllUsers } from '../../store/slices/adminSlice';
 import AdminCustomers from './AdminCustomers';
+import AdminUpgradeRequests from './AdminUpgradeRequests';
 import Button from '../../components/ui/Button';
 
 const AdminTab = {
@@ -60,6 +61,7 @@ const AdminDashboard = () => {
 
   const menuItems = [
     { key: AdminTab.DASHBOARD, label: 'Overview', icon: BarChart3 },
+    { key: AdminTab.UPGRADES, label: 'Upgrade Requests', icon: ArrowUpCircle },
     { key: AdminTab.CUSTOMERS, label: 'Manage Users', icon: Users },
   ];
 
@@ -69,6 +71,8 @@ const AdminDashboard = () => {
         return <AdminDashboardContent onTabChange={setActiveTab} />;
       case AdminTab.CUSTOMERS:
         return <AdminCustomers />;
+      case AdminTab.UPGRADES:
+        return <AdminUpgradeRequests />;
       default:
         return <AdminDashboardContent onTabChange={setActiveTab} />;
     }
@@ -198,6 +202,14 @@ const AdminDashboardContent = ({ onTabChange }) => {
         <div className="bg-[#0d1433] p-8 rounded-3xl border border-white/5">
           <h3 className="text-xl font-bold mb-6">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={() => onTabChange(AdminTab.UPGRADES)}
+              className="p-6 rounded-2xl bg-white/5 hover:bg-orange-600 border border-white/5 transition-all text-left group"
+            >
+              <ArrowUpCircle className="mb-3 text-orange-500 group-hover:text-white" size={28} />
+              <p className="font-bold">Upgrade Requests</p>
+              <p className="text-xs text-gray-500 group-hover:text-white/70 mt-1">{stats.pendingUpgradeRequests} pending approvals</p>
+            </button>
             <button 
               onClick={() => onTabChange(AdminTab.CUSTOMERS)}
               className="p-6 rounded-2xl bg-white/5 hover:bg-blue-600 border border-white/5 transition-all text-left group"

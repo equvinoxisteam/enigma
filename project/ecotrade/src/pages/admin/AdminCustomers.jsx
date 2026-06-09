@@ -110,7 +110,7 @@ const AdminCustomers = () => {
                           <div>
                             <div className="flex items-center gap-2">
                                <p className="font-black text-white text-lg tracking-tight">{u.fullName}</p>
-                               {u.isVerified && <BadgeCheck size={18} className="text-blue-500 fill-blue-500/10" />}
+                               {u.manufacturerSettings?.isVerified && <BadgeCheck size={18} className="text-blue-500 fill-blue-500/10" />}
                             </div>
                             <p className="text-xs text-gray-500 font-bold">{u.companyName || 'No Company'} • {u.email}</p>
                           </div>
@@ -174,17 +174,17 @@ const AdminCustomers = () => {
             <div className="grid grid-cols-2 gap-8 mb-12">
               <div className="p-8 bg-white/5 rounded-[2rem] border border-white/10 hover:border-blue-500/30 transition-all group">
                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-4 flex items-center gap-2">
-                   Strategic Identity <BadgeCheck size={14} className={selectedUser.isVerified ? 'text-blue-500' : 'text-gray-700'} />
+                   Strategic Identity <BadgeCheck size={14} className={selectedUser.manufacturerSettings?.isVerified ? 'text-blue-500' : 'text-gray-700'} />
                 </p>
                 <div className="flex items-center justify-between">
                    <p className="text-2xl font-black text-white">{selectedUser.fullName}</p>
                    <button 
-                    onClick={() => handleUpgrade(selectedUser._id, selectedUser.subscription?.planType || 'FREE', selectedUser.userType, { isVerified: !selectedUser.isVerified })}
+                    onClick={() => handleUpgrade(selectedUser._id, selectedUser.subscription?.planType || 'FREE', selectedUser.userType, { isVerified: !selectedUser.manufacturerSettings?.isVerified })}
                     className={`px-4 py-2 rounded-xl text-[10px] font-black font-black uppercase transition-all ${
-                      selectedUser.isVerified ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-500 border border-white/10'
+                      selectedUser.manufacturerSettings?.isVerified ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-500 border border-white/10'
                     }`}
                    >
-                     {selectedUser.isVerified ? 'Verified Elite' : 'Standard Account'}
+                     {selectedUser.manufacturerSettings?.isVerified ? 'Verified Elite' : 'Standard Account'}
                    </button>
                 </div>
               </div>

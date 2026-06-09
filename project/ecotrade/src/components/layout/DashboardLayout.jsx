@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight,
-  Home, FileText, CheckCircle, Mail, BarChart3,
-  Factory, PlusCircle, Star, DollarSign, MessageSquare, Check
+  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationAPI } from '../../api/notificationAPI';
 import LoginModal from '../auth/LoginModal';
 import AISearchComponent from '../AISearchComponent';
+import EnigmaLogo from '../EnigmaLogo';
 
 const DashboardLayout = ({ children }) => {
   const location = useLocation();
@@ -106,11 +105,7 @@ const DashboardLayout = ({ children }) => {
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <img 
-                src="/indianet png.png" 
-                alt="Enigma Logo" 
-                className="h-16 w-auto object-contain"
-              />
+              <EnigmaLogo size={48} />
             </div>
             <p className="text-gray-600 mb-6">Please login to access your dashboard</p>
             <button
@@ -136,29 +131,46 @@ const DashboardLayout = ({ children }) => {
   const isBuyer = userType === 'BUYER' || userType === 'HYBRID';
 
   const commonMenuItems = [
-    { icon: Home, label: 'My Feed', path: '/dashboard' },
-    { icon: User, label: 'My Profile', path: '/profile' }
+    { label: 'My Feed', path: '/dashboard', hint: 'Dashboard overview and activity' },
+    { label: 'My Profile', path: '/profile', hint: 'Company and account details' }
   ];
 
   const manufacturerMenuItems = [
-    { icon: FileText, label: "RFQ's Pool", path: '/rfqs-pool' },
-    { icon: CheckCircle, label: "Accepted RFQ's", path: '/accepted-rfqs' },
-    { icon: Mail, label: 'Your Invitations', path: '/invitations' },
-    { icon: BarChart3, label: 'Analytics Dashboard', path: '/analytics' }
+    { label: 'RFQ Pool', path: '/rfqs-pool', hint: 'Browse open buyer requests' },
+    { label: 'Accepted RFQs', path: '/accepted-rfqs', hint: 'RFQs you are working on' },
+    { label: 'Your Invitations', path: '/invitations', hint: 'Direct buyer invitations' },
+    { label: 'Analytics Dashboard', path: '/analytics', hint: 'Performance and pipeline metrics' }
   ];
 
   const buyerMenuItems = [
-    { icon: Factory, label: "Manufacturer's Pool", path: '/manufacturers-pool' },
-    { icon: PlusCircle, label: 'Start Your RFQ', path: '/start-rfq' },
-    { icon: FileText, label: "My RFQ's", path: '/my-rfqs' },
-    { icon: Star, label: 'My Manufacturers', path: '/my-manufacturers' }
+    { label: "Manufacturer Pool", path: '/manufacturers-pool', hint: 'Discover and compare suppliers' },
+    { label: 'Create RFQ', path: '/start-rfq', hint: 'Publish a new sourcing request' },
+    { label: 'My RFQs', path: '/my-rfqs', hint: 'Track your active requests' },
+    { label: 'My Manufacturers', path: '/my-manufacturers', hint: 'Saved and starred suppliers' }
   ];
 
   const supportMenuItems = [
-    { icon: DollarSign, label: 'Pricing', path: '/pricing' },
-    { icon: Settings, label: 'Settings', path: '/settings' },
-    { icon: HelpCircle, label: 'Help', path: '/help' }
+    { label: 'Pricing', path: '/pricing', hint: 'Plans and upgrade options' },
+    { label: 'Settings', path: '/settings', hint: 'Notifications and preferences' },
+    { label: 'Help', path: '/help', hint: 'Guides and support' }
   ];
+
+  const renderNavLinks = (items) => items.map((item) => (
+    <Link
+      key={item.path}
+      to={item.path}
+      title={item.hint}
+      className={`
+        block ${sidebarOpen ? 'px-4' : 'px-2 text-center'} py-2.5 rounded-lg transition-colors text-sm font-medium
+        ${isActive(item.path)
+          ? 'bg-[#4881F8] text-white'
+          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+        }
+      `}
+    >
+      {sidebarOpen ? item.label : item.label.charAt(0)}
+    </Link>
+  ));
 
   const handleLogout = () => {
     logout();
@@ -192,26 +204,9 @@ const DashboardLayout = ({ children }) => {
               className="flex items-center justify-center w-full hover:bg-gray-800 rounded-lg p-2 transition-colors group"
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-              {sidebarOpen ? (
-                <div className="flex items-center w-full gap-3">
-                  <img 
-                    src="/indianet png.png" 
-                    alt="Enigma Logo" 
-                    className="h-8 w-auto object-contain flex-shrink-0"
-                  />
-                  <span className="text-lg font-bold whitespace-nowrap" style={{ color: '#4881F8' }}>
-                    Enigma
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center w-full">
-                  <img 
-                    src="/indianet png.png" 
-                    alt="Enigma Logo" 
-                    className="h-8 w-auto object-contain"
-                  />
-                </div>
-              )}
+              <div className={`flex items-center w-full ${sidebarOpen ? 'justify-start' : 'justify-center'}`}>
+                <EnigmaLogo size={32} showText={sidebarOpen} />
+              </div>
             </button>
           </div>
 
@@ -225,28 +220,7 @@ const DashboardLayout = ({ children }) => {
               {!sidebarOpen && (
                 <div className="h-4"></div>
               )}
-              <div className="space-y-1">
-                {commonMenuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`
-                        flex items-center ${sidebarOpen ? 'px-3' : 'px-2 justify-center'} py-2 rounded-lg transition-colors group
-                        ${isActive(item.path)
-                          ? 'bg-[#4881F8] text-white'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                        }
-                      `}
-                      title={!sidebarOpen ? item.label : ''}
-                    >
-                      <Icon size={20} className={sidebarOpen ? 'mr-3 flex-shrink-0' : 'flex-shrink-0'} />
-                      {sidebarOpen && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-                    </Link>
-                  );
-                })}
-              </div>
+              <div className="space-y-1">{renderNavLinks(commonMenuItems)}</div>
             </div>
 
             {/* For Manufacturers Section */}
@@ -258,28 +232,7 @@ const DashboardLayout = ({ children }) => {
                 {!sidebarOpen && (
                   <div className="h-4"></div>
                 )}
-                <div className="space-y-1">
-                  {manufacturerMenuItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`
-                          flex items-center ${sidebarOpen ? 'px-3' : 'px-2 justify-center'} py-2 rounded-lg transition-colors group
-                          ${isActive(item.path)
-                            ? 'bg-[#4881F8] text-white'
-                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                          }
-                        `}
-                        title={!sidebarOpen ? item.label : ''}
-                      >
-                        <Icon size={20} className={sidebarOpen ? 'mr-3 flex-shrink-0' : 'flex-shrink-0'} />
-                        {sidebarOpen && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
+                <div className="space-y-1">{renderNavLinks(manufacturerMenuItems)}</div>
               </div>
             )}
 
@@ -292,28 +245,7 @@ const DashboardLayout = ({ children }) => {
                 {!sidebarOpen && (
                   <div className="h-4"></div>
                 )}
-                <div className="space-y-1">
-                  {buyerMenuItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`
-                          flex items-center ${sidebarOpen ? 'px-3' : 'px-2 justify-center'} py-2 rounded-lg transition-colors group
-                          ${isActive(item.path)
-                            ? 'bg-[#4881F8] text-white'
-                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                          }
-                        `}
-                        title={!sidebarOpen ? item.label : ''}
-                      >
-                        <Icon size={20} className={sidebarOpen ? 'mr-3 flex-shrink-0' : 'flex-shrink-0'} />
-                        {sidebarOpen && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
+                <div className="space-y-1">{renderNavLinks(buyerMenuItems)}</div>
               </div>
             )}
 
@@ -326,33 +258,13 @@ const DashboardLayout = ({ children }) => {
                 <div className="h-4"></div>
               )}
               <div className="space-y-1">
-                {supportMenuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`
-                        flex items-center ${sidebarOpen ? 'px-3' : 'px-2 justify-center'} py-2 rounded-lg transition-colors group
-                        ${isActive(item.path)
-                          ? 'bg-[#4881F8] text-white'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                        }
-                      `}
-                      title={!sidebarOpen ? item.label : ''}
-                    >
-                      <Icon size={20} className={sidebarOpen ? 'mr-3 flex-shrink-0' : 'flex-shrink-0'} />
-                      {sidebarOpen && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-                    </Link>
-                  );
-                })}
+                {renderNavLinks(supportMenuItems)}
                 <button
                   onClick={handleLogout}
-                  className={`w-full flex items-center ${sidebarOpen ? 'px-3' : 'px-2 justify-center'} py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors group`}
-                  title={!sidebarOpen ? 'Logout' : ''}
+                  className={`w-full block ${sidebarOpen ? 'px-4 text-left' : 'px-2 text-center'} py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors`}
+                  title="Sign out of your account"
                 >
-                  <LogOut size={20} className={sidebarOpen ? 'mr-3 flex-shrink-0' : 'flex-shrink-0'} />
-                  {sidebarOpen && <span className="text-sm whitespace-nowrap">Logout</span>}
+                  {sidebarOpen ? 'Logout' : '↪'}
                 </button>
               </div>
             </div>
@@ -379,6 +291,15 @@ const DashboardLayout = ({ children }) => {
             title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {sidebarOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}
+          </button>
+
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-ai-search'))}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:border-[#4881F8] hover:text-[#4881F8] transition-colors"
+            title="Search manufacturers and RFQs with AI"
+          >
+            <Search size={16} />
+            AI Search
           </button>
 
           <div className="flex-1" />

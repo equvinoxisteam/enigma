@@ -1,3 +1,5 @@
+const { getLogoUrl } = require('../../utils/brand');
+
 function verificationEmailTemplate(email, verificationUrl, name) {
   return `
     <!DOCTYPE html>
@@ -14,7 +16,7 @@ function verificationEmailTemplate(email, verificationUrl, name) {
             <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <tr>
                 <td style="padding: 30px; text-align: center; background-color: #ffffff;">
-                  <img src="${process.env.FRONTEND_URL || 'http://localhost:5173'}/indianet png.png" alt="Enigma Logo" style="max-width: 200px; height: auto; margin: 0 auto;" />
+                  <img src="${getLogoUrl()}" alt="Enigma Logo" style="max-width: 120px; height: auto; margin: 0 auto;" />
                 </td>
               </tr>
               <tr>
@@ -81,7 +83,7 @@ function passwordResetTemplate(email, resetUrl, name) {
             <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <tr>
                 <td style="padding: 30px; text-align: center; background-color: #ffffff;">
-                  <img src="${process.env.FRONTEND_URL || 'http://localhost:5173'}/indianet png.png" alt="Enigma Logo" style="max-width: 200px; height: auto; margin: 0 auto;" />
+                  <img src="${getLogoUrl()}" alt="Enigma Logo" style="max-width: 120px; height: auto; margin: 0 auto;" />
                 </td>
               </tr>
               <tr>
@@ -154,7 +156,7 @@ function welcomeEmailTemplate(email, name) {
             <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <tr>
                 <td style="padding: 30px; text-align: center; background-color: #ffffff;">
-                  <img src="${process.env.FRONTEND_URL || 'http://localhost:5173'}/indianet png.png" alt="Enigma Logo" style="max-width: 200px; height: auto; margin: 0 auto;" />
+                  <img src="${getLogoUrl()}" alt="Enigma Logo" style="max-width: 120px; height: auto; margin: 0 auto;" />
                 </td>
               </tr>
               <tr>

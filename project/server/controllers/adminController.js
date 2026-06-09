@@ -106,9 +106,88 @@ const updateStatus = async (req, res) => {
   }
 };
 
+// @desc    Get pending upgrade requests
+// @route   GET /api/admin/upgrade-requests
+const getUpgradeRequests = async (req, res) => {
+  try {
+    const status = req.query.status || 'PENDING';
+    const requests = await UpgradeRequest.find({ status })
+      .populate('user', 'fullName email companyName userType subscription')
+      .sort({ requestedAt: -1 });
+    res.json(requests);
+  } catch (error) {
+    console.error('getUpgradeRequests error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Approve upgrade request and assign plan
+// @route   PUT /api/admin/upgrade-requests/:id/approve
+const approveUpgradeRequest = async (req, res) => {
+  try {
+    const request = await UpgradeRequest.findById(req.params.id).populate('user');
+    if (!request) {
+      return res.status(404).json({ message: 'Upgrade request not found' });
+    }
+
+    const user = await User.findById(request.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const planType = (req.body.planType || request.planName || 'STANDARD').toUpperCase();
+    user.subscription.planType = planType;
+    user.subscription.status = 'ACTIVE';
+    user.subscription.startsAt = new Date();
+    user.subscription.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+
+    if (['PRO', 'ENTERPRISE'].includes(planType)) {
+      user.manufacturerSettings.isVerified = true;
+    }
+
+    if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
+      user.manufacturerStatus = 'ACTIVE';
+      user.status = 'ACTIVE';
+    }
+
+    await user.save();
+
+    await UpgradeRequest.updateMany(
+      { user: user._id, status: 'PENDING' },
+      { status: 'APPROVED', processedAt: new Date() }
+    );
+
+    res.json({ message: 'Upgrade request approved', user, request });
+  } catch (error) {
+    console.error('approveUpgradeRequest error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Reject upgrade request
+// @route   PUT /api/admin/upgrade-requests/:id/reject
+const rejectUpgradeRequest = async (req, res) => {
+  try {
+    const request = await UpgradeRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: 'Upgrade request not found' });
+    }
+    request.status = 'REJECTED';
+    request.processedAt = new Date();
+    await request.save();
+    res.json({ message: 'Upgrade request rejected', request });
+  } catch (error) {
+    console.error('rejectUpgradeRequest error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getUsers,
   getStats,
   upgradeUser,
-  updateStatus
+  updateStatus,
+  getUpgradeRequests,
+  approveUpgradeRequest,
+  rejectUpgradeRequest
 };

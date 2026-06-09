@@ -96,7 +96,8 @@ const PricingPage = () => {
     setLoading(true);
     try {
       await authAPI.requestUpgrade({
-        planName: selectedPlan.name,
+        planType: selectedPlan.id,
+        planName: selectedPlan.id,
         message: requestMessage
       });
       showSuccess(`Request for ${selectedPlan.name} plan submitted! Our team will contact you for payment.`);

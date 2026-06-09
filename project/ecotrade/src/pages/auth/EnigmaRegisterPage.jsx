@@ -193,10 +193,9 @@ const EnigmaRegisterPage = () => {
     
     try {
       const fullPhoneNumber = `${formData.phoneCode}${formData.phoneNumber}`;
-      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       const payload = {
         ...formData,
-        fullName,
+        fullName: formData.fullName.trim(),
         phoneNumber: fullPhoneNumber,
         userType: role,
         maxDimensions: {
@@ -248,7 +247,7 @@ const EnigmaRegisterPage = () => {
         {/* Header */}
         <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
           <div style={{ marginBottom: '1.5rem' }}>
-            <img src="/indianet png.png" alt="Enigma" style={{ height: '52px', width: 'auto', filter: 'brightness(1.1)', margin: '0 auto' }} />
+            <img src="/enigma-logo.svg" alt="Enigma" style={{ height: '52px', width: 'auto', margin: '0 auto' }} />
           </div>
           <button onClick={() => navigate('/role-selection')} style={{ display:'inline-flex', alignItems:'center', gap:'0.4rem', color:'rgba(255,255,255,0.45)', background:'none', border:'none', cursor:'pointer', fontSize:'0.875rem', marginBottom:'1rem' }}>
             <ArrowLeft size={16} /> Back to Role Selection
@@ -421,7 +420,17 @@ const EnigmaRegisterPage = () => {
 
                 <div>
                   <label className="reg-label">Company GST/VAT Number</label>
-                  <input type="text" name="gstNumber" value={formData.gstNumber} onChange={handleChange} className="reg-input" />
+                  <input
+                    type="text"
+                    name="gstNumber"
+                    value={formData.gstNumber}
+                    onChange={handleChange}
+                    placeholder="e.g. 29ABCDE1234F1Z5 (15-character GSTIN)"
+                    className="reg-input"
+                  />
+                  <p className="reg-error" style={{ color: 'rgba(255,255,255,0.35)', marginTop: '0.35rem' }}>
+                    Optional. Indian GST format: 2-digit state + 10-char PAN + entity + Z + checksum.
+                  </p>
                 </div>
 
                 <div className="md:col-span-2">

@@ -166,7 +166,7 @@ const DashboardPage = () => {
             className="w-full md:w-auto px-10 py-5 bg-[#01364a] text-white rounded-[1.8rem] font-black text-lg flex items-center justify-center gap-4 hover:shadow-2xl hover:shadow-blue-950/20 transition-all group border-b-4 border-blue-950 active:border-b-0 active:translate-y-1"
           >
             <Search size={24} className="group-hover:rotate-12 transition-transform" />
-            Launch AI Search
+            AI Search
           </button>
           
           <div className="absolute right-[-20px] bottom-[-20px] opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-700">

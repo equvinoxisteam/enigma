@@ -83,6 +83,7 @@ const ProfilePage = () => {
           country: profile.country || '',
           companySize: profile.companySize || '',
           gstNumber: profile.gstNumber || '',
+          industryVertical: profile.industryVertical || '',
           manufacturingTypes: profile.manufacturingTypes || [],
           yearsInBusiness: profile.yearsInBusiness || 0,
           annualSpending: profile.annualSpending || '',
@@ -654,20 +655,19 @@ const ProfilePage = () => {
                 Primary Materials
               </label>
               <input
+                key={`materials-${formData.manufacturerSettings.materials?.join('|')}`}
                 type="text"
                 placeholder="Enter materials separated by commas"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                defaultValue={formData.manufacturerSettings.materials?.join(', ') || ''}
                 onBlur={(e) => {
-                  const materials = e.target.value.split(',').map(m => m.trim()).filter(m => m);
+                  const materials = e.target.value.split(',').map(m => m.trim()).filter(Boolean);
                   setFormData(prev => ({
                     ...prev,
-                    manufacturerSettings: {
-                      ...prev.manufacturerSettings,
-                      materials: materials
-                    }
+                    manufacturerSettings: { ...prev.manufacturerSettings, materials },
+                    primaryMaterials: materials
                   }));
                 }}
-                defaultValue={formData.manufacturerSettings.materials?.join(', ') || ''}
               />
               <p className="text-xs text-gray-500 mt-1">e.g., Aluminum, Steel, Plastic, Titanium</p>
             </div>
@@ -677,20 +677,18 @@ const ProfilePage = () => {
                 Part Types
               </label>
               <input
+                key={`partTypes-${formData.manufacturerSettings.partTypes?.join('|')}`}
                 type="text"
                 placeholder="Enter part types separated by commas"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                defaultValue={formData.manufacturerSettings.partTypes?.join(', ') || ''}
                 onBlur={(e) => {
-                  const partTypes = e.target.value.split(',').map(p => p.trim()).filter(p => p);
+                  const partTypes = e.target.value.split(',').map(p => p.trim()).filter(Boolean);
                   setFormData(prev => ({
                     ...prev,
-                    manufacturerSettings: {
-                      ...prev.manufacturerSettings,
-                      partTypes: partTypes
-                    }
+                    manufacturerSettings: { ...prev.manufacturerSettings, partTypes }
                   }));
                 }}
-                defaultValue={formData.manufacturerSettings.partTypes?.join(', ') || ''}
               />
               <p className="text-xs text-gray-500 mt-1">e.g., Gear, Pipe, Bracket, Housing</p>
             </div>
@@ -700,20 +698,18 @@ const ProfilePage = () => {
                 Machinery
               </label>
               <input
+                key={`machinery-${formData.manufacturerSettings.machinery?.join('|')}`}
                 type="text"
                 placeholder="Enter machinery separated by commas"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                defaultValue={formData.manufacturerSettings.machinery?.join(', ') || ''}
                 onBlur={(e) => {
-                  const machinery = e.target.value.split(',').map(m => m.trim()).filter(m => m);
+                  const machinery = e.target.value.split(',').map(m => m.trim()).filter(Boolean);
                   setFormData(prev => ({
                     ...prev,
-                    manufacturerSettings: {
-                      ...prev.manufacturerSettings,
-                      machinery: machinery
-                    }
+                    manufacturerSettings: { ...prev.manufacturerSettings, machinery }
                   }));
                 }}
-                defaultValue={formData.manufacturerSettings.machinery?.join(', ') || ''}
               />
               <p className="text-xs text-gray-500 mt-1">e.g., Metrology machines, 5-axis CNC, Laser Cutter</p>
             </div>

@@ -146,7 +146,29 @@ const StartRFQPage = () => {
     e.preventDefault();
 
     if (activeTab === 'workpieces') {
+      const wp = formData.workpieces[0];
+      if (!wp.mainFileUrl) {
+        showError('Please upload a technical model (STL/STEP) before continuing.');
+        return;
+      }
+      if (!wp.technology) {
+        showError('Please select a manufacturing technology.');
+        return;
+      }
+      if (!wp.material?.trim()) {
+        showError('Please enter a material grade.');
+        return;
+      }
       setActiveTab('requirements');
+      return;
+    }
+
+    if (!formData.rfqDeadline) {
+      showError('Please set an RFQ expiry date.');
+      return;
+    }
+    if (!formData.country?.trim()) {
+      showError('Please set a destination country in logistics.');
       return;
     }
 

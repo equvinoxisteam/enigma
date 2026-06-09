@@ -105,7 +105,7 @@ const LoginModal = ({ isOpen, onClose, onSuccess }) => {
           
           <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 mb-4 inline-flex items-center justify-center">
             <img 
-              src="/indianet png.png" 
+              src="/enigma-logo.svg" 
               alt="Enigma Logo" 
               className="h-8 w-auto object-contain"
             />

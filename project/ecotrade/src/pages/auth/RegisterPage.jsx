@@ -136,7 +136,7 @@ const RegisterPage = () => {
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="p-6 sm:p-8">
             <div className="mb-6" style={{ textAlign: 'center' }}>
-              <img src="/indianet png.png" alt="Enigma" style={{ height: '48px', width: 'auto', filter: 'brightness(1.0)', margin: '0 auto' }} />
+              <img src="/enigma-logo.svg" alt="Enigma" style={{ height: '48px', width: 'auto', filter: 'brightness(1.0)', margin: '0 auto' }} />
             </div>
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Create Account</h1>

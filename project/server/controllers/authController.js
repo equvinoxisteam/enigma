@@ -240,6 +240,17 @@ const registerUser = async (req, res) => {
     // Set manufacturer status only for manufacturers and hybrid
     if (userType === 'MANUFACTURER' || userType === 'HYBRID') {
       userData.manufacturerStatus = manufacturerStatus;
+      userData.manufacturerSettings = {
+        technologies: manufacturingTypes || [],
+        materials: primaryMaterials || [],
+        partTypes: [],
+        machinery: [],
+        regionsServed: [],
+        languages: ['English'],
+        capacityStatus: 'OPEN',
+        isVerified: false,
+        videoSlides: []
+      };
     }
 
     const user = await User.create(userData);
@@ -580,12 +591,22 @@ const updateProfile = async (req, res) => {
 // @route   POST /api/auth/upgrade-request
 const requestUpgrade = async (req, res) => {
   try {
-    const { planName, message } = req.body;
+    const { planName, planType, message } = req.body;
     const UpgradeRequest = require('../models/UpgradeRequest');
+
+    if (!['MANUFACTURER', 'HYBRID'].includes(req.user.userType)) {
+      return res.status(400).json({ message: 'Only manufacturer and hybrid accounts can request plan upgrades' });
+    }
+
+    const resolvedPlan = (planType || planName || '').toUpperCase();
+    const validPlans = ['STANDARD', 'PRO', 'ENTERPRISE'];
+    if (!validPlans.includes(resolvedPlan)) {
+      return res.status(400).json({ message: 'Invalid plan selected' });
+    }
 
     const request = await UpgradeRequest.create({
       user: req.user._id,
-      planName,
+      planName: resolvedPlan,
       message
     });
 

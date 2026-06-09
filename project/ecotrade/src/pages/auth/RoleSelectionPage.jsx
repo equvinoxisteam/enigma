@@ -146,7 +146,7 @@ const RoleSelectionPage = () => {
         {/* Header */}
         <div className={`fade-up ${visible ? 'visible' : ''}`} style={{ textAlign: 'center', marginBottom: '3.5rem', transitionDelay: '0s' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
-            <img src="/indianet png.png" alt="Enigma" style={{ height: '48px', width: 'auto', filter: 'brightness(1.1)' }} />
+            <img src="/enigma-logo.svg" alt="Enigma" style={{ height: '48px', width: 'auto', filter: 'brightness(1.1)' }} />
           </div>
           <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 800, color: '#fff', margin: '0 0 1rem', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
             Join the Future of<br />

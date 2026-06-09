@@ -9,7 +9,7 @@ const { createNotification } = require('./notificationController');
 // @access  Private (Buyer/Hybrid)
 const createRFQ = async (req, res) => {
   try {
-    const { title, workpieces, requirements, status = 'DRAFT' } = req.body;
+    const { title, workpieces, requirements, status = 'DRAFT', ndaFile } = req.body;
     const buyerId = req.user._id;
 
     // Validate user role
@@ -22,6 +22,7 @@ const createRFQ = async (req, res) => {
       title,
       status,
       workpieces: workpieces || [],
+      ndaFile: ndaFile || '',
       ...requirements
     };
 

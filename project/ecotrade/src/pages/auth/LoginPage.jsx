@@ -149,7 +149,7 @@ const LoginPage = () => {
         <div className={`auth-card ${visible ? 'visible' : ''}`} style={{ width: '100%', maxWidth: '440px' }}>
           <div style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.75rem 2.5rem' }}>
             <div className="mb-8" style={{ textAlign: 'center' }}>
-              <img src="/indianet png.png" alt="Enigma" style={{ height: '52px', width: 'auto', filter: 'brightness(1.1)', margin: '0 auto' }} />
+              <img src="/enigma-logo.svg" alt="Enigma" style={{ height: '52px', width: 'auto', filter: 'brightness(1.1)', margin: '0 auto' }} />
             </div>
             <h2 style={{ color: '#fff', fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.4rem', letterSpacing: '-0.015em' }}>Welcome back</h2>
             <p style={{ color: 'rgba(255,255,255,0.45)', marginBottom: '2rem', fontSize: '0.9rem' }}>Sign in to your Enigma account</p>

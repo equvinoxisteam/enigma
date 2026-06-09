@@ -16,7 +16,8 @@ const SubscriptionRequestModal = ({ plan, onClose, onSuccess }) => {
     setIsSubmitting(true);
     try {
       await authAPI.requestUpgrade({
-        planName: plan.name,
+        planType: plan.id || plan.name?.toUpperCase(),
+        planName: plan.id || plan.name?.toUpperCase(),
         message: message
       });
       setIsSuccess(true);

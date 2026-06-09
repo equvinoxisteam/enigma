@@ -46,9 +46,30 @@ const updateStatus = async (userId, status, token) => {
   return response.data;
 };
 
+const getUpgradeRequests = async (token, status = 'PENDING') => {
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+  const response = await axios.get(`${API_URL}/upgrade-requests?status=${status}`, config);
+  return response.data;
+};
+
+const approveUpgradeRequest = async (id, token, planType) => {
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+  const response = await axios.put(`${API_URL}/upgrade-requests/${id}/approve`, { planType }, config);
+  return response.data;
+};
+
+const rejectUpgradeRequest = async (id, token) => {
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+  const response = await axios.put(`${API_URL}/upgrade-requests/${id}/reject`, {}, config);
+  return response.data;
+};
+
 export const adminAPI = {
   getDashboardStats,
   getUsers,
   upgradeUser,
-  updateStatus
+  updateStatus,
+  getUpgradeRequests,
+  approveUpgradeRequest,
+  rejectUpgradeRequest
 };

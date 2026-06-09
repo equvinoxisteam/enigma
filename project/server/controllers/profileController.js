@@ -25,20 +25,30 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const {
+      fullName,
+      phoneNumber,
       companyName,
       website,
       companyLogo,
       companyBanner,
+      address,
+      city,
+      state,
+      zipCode,
+      country,
+      companySize,
+      gstNumber,
       industryVertical,
+      manufacturingTypes,
+      yearsInBusiness,
+      annualSpending,
+      procurementTeamSize,
+      preferredLeadTime,
       buyerSettings,
       manufacturerSettings,
       primaryMaterials,
       certifications,
-      maxDimensions,
-      regionsServed,
-      languages,
-      country,
-      companySize
+      maxDimensions
     } = req.body;
 
     const user = await User.findById(req.user._id);
@@ -47,14 +57,25 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update company info
+    if (fullName !== undefined) user.fullName = fullName;
+    if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
     if (companyName !== undefined) user.companyName = companyName;
     if (website !== undefined) user.website = website;
     if (companyLogo !== undefined) user.companyLogo = companyLogo;
     if (companyBanner !== undefined) user.companyBanner = companyBanner;
-    if (industryVertical !== undefined) user.industryVertical = industryVertical;
+    if (address !== undefined) user.address = address;
+    if (city !== undefined) user.city = city;
+    if (state !== undefined) user.state = state;
+    if (zipCode !== undefined) user.zipCode = zipCode;
     if (country !== undefined) user.country = country;
     if (companySize !== undefined) user.companySize = companySize;
+    if (gstNumber !== undefined) user.gstNumber = gstNumber;
+    if (industryVertical !== undefined) user.industryVertical = industryVertical;
+    if (manufacturingTypes !== undefined) user.manufacturingTypes = manufacturingTypes;
+    if (yearsInBusiness !== undefined) user.yearsInBusiness = yearsInBusiness;
+    if (annualSpending !== undefined) user.annualSpending = annualSpending;
+    if (procurementTeamSize !== undefined) user.procurementTeamSize = procurementTeamSize;
+    if (preferredLeadTime !== undefined) user.preferredLeadTime = preferredLeadTime;
 
     // Update buyer settings
     if (buyerSettings) {
@@ -63,7 +84,13 @@ const updateProfile = async (req, res) => {
 
     // Update manufacturer settings
     if (manufacturerSettings) {
-      user.manufacturerSettings = { ...user.manufacturerSettings, ...manufacturerSettings };
+      user.manufacturerSettings = { ...user.manufacturerSettings?.toObject?.() || user.manufacturerSettings || {}, ...manufacturerSettings };
+      if (manufacturerSettings.technologies) {
+        user.manufacturingTypes = manufacturerSettings.technologies;
+      }
+      if (manufacturerSettings.materials) {
+        user.primaryMaterials = manufacturerSettings.materials;
+      }
     }
 
     // Update manufacturer profile fields

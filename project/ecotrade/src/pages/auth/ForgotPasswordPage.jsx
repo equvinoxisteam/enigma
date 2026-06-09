@@ -66,7 +66,7 @@ const ForgotPasswordPage = () => {
       <div className={`fp-card ${visible ? 'v' : ''}`} style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
         <div style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.5rem 2.25rem' }}>
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            <img src="/indianet png.png" alt="Enigma" style={{ height: '48px', width: 'auto', filter: 'brightness(1.1)', margin: '0 auto' }} />
+            <img src="/enigma-logo.svg" alt="Enigma" style={{ height: '48px', width: 'auto', filter: 'brightness(1.1)', margin: '0 auto' }} />
           </div>
 
           {!emailSent ? (

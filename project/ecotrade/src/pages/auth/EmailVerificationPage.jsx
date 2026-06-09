@@ -85,7 +85,7 @@ const EmailVerificationPage = () => {
 
       <div className={`ev-card ${visible ? 'v' : ''}`} style={{ width: '100%', maxWidth: '440px', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <img src="/indianet png.png" alt="Enigma" style={{ height: '44px', width: 'auto', filter: 'brightness(1.1)' }} />
+          <img src="/enigma-logo.svg" alt="Enigma" style={{ height: '44px', width: 'auto', filter: 'brightness(1.1)' }} />
         </div>
 
         <div style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', padding: '2.5rem 2.25rem' }}>
