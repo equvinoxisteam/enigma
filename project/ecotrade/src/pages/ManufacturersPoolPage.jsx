@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Filter, Factory, MapPin, Star, Mail, Eye } from 'lucide-react';
+import { Search, Filter, Factory, MapPin, Star, Mail, Eye, Shield, CheckCircle, Zap, Sparkles, ChevronRight, Info, Award, Lock, Globe } from 'lucide-react';
+import { hasFeature, FEATURE_KEYS, PLAN_TYPES, getEffectivePlanType } from '../config/planFeatures';
 import { invitationAPI } from '../api/invitationAPI';
 import { rfqAPI } from '../api/rfqAPI';
 import { searchAPI } from '../api/searchAPI';
+import Button from '../components/ui/Button';
 
 const ManufacturersPoolPage = () => {
   const navigate = useNavigate();
@@ -30,7 +32,6 @@ const ManufacturersPoolPage = () => {
   const [availableRFQs, setAvailableRFQs] = useState([]);
 
   const technologyOptions = ['CNC', 'TURNING', 'MILLING', '3D_PRINTING', 'SHEET_METAL', 'DIE_CASTING', 'INJECTION_MOLDING', 'STAMPING', 'WELDING', 'ASSEMBLY', 'OTHER'];
-  const certificationOptions = ['ISO_9001', 'ISO_13485', 'AS9100', 'IATF_16949', 'ROHS', 'OTHER'];
   const partTypeOptions = ['Gear', 'Pipe', 'Bracket', 'Housing', 'Shaft', 'Bearing', 'Valve', 'Connector', 'Mount', 'Cover', 'Other'];
   const companySizeOptions = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
 
@@ -45,21 +46,39 @@ const ManufacturersPoolPage = () => {
     setLoading(true);
     try {
       const response = await searchAPI.searchManufacturers({
-        keyword: filters.keyword,
-        partType: filters.partType,
-        technologies: filters.technologies,
-        country: filters.country,
-        region: filters.region,
-        certifications: filters.certifications,
-        companySize: filters.companySize,
-        material: filters.material,
-        machinery: filters.machinery,
+        ...filters,
         page: 1,
-        limit: 50
+        limit: 100
       });
-      setManufacturers(response.data || []);
+      
+      const rawManufacturers = response.data || [];
+      
+      // Implementation: Enterprise Sorting & Free Anonymization
+      const processed = rawManufacturers.map(mfr => {
+        const plan = getEffectivePlanType(mfr);
+        const isFree = plan === PLAN_TYPES.FREE;
+        return {
+          ...mfr,
+          planType: plan,
+          isFree,
+          displayName: isFree ? 'Enigma Manufacturer' : (mfr.companyName || 'Unknown'),
+          displayLogo: isFree ? null : mfr.companyLogo,
+          displayCountry: mfr.country || 'International',
+          isPremium: plan !== PLAN_TYPES.FREE
+        };
+      }).sort((a, b) => {
+        // Enterprise accounts always first
+        if (a.planType === PLAN_TYPES.ENTERPRISE && b.planType !== PLAN_TYPES.ENTERPRISE) return -1;
+        if (b.planType === PLAN_TYPES.ENTERPRISE && a.planType !== PLAN_TYPES.ENTERPRISE) return 1;
+        // Then Pro
+        if (a.planType === PLAN_TYPES.PRO && b.planType !== PLAN_TYPES.PRO) return -1;
+        if (b.planType === PLAN_TYPES.PRO && a.planType !== PLAN_TYPES.PRO) return 1;
+        return 0;
+      });
+
+      setManufacturers(processed);
     } catch (error) {
-      showError('Failed to load manufacturers: ' + (error.response?.data?.message || error.message));
+      showError('Failed to load manufacturers');
     } finally {
       setLoading(false);
     }
@@ -76,7 +95,6 @@ const ManufacturersPoolPage = () => {
 
   const handleInvite = async (rfqId) => {
     if (!selectedManufacturer) return;
-
     try {
       await invitationAPI.create({
         rfqId,
@@ -87,311 +105,197 @@ const ManufacturersPoolPage = () => {
       setShowInviteModal(false);
       setSelectedManufacturer(null);
     } catch (error) {
-      showError('Failed to send invitation: ' + (error.response?.data?.message || error.message));
+      showError('Failed to send invitation');
     }
-  };
-
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
   };
 
   const handleTechnologyToggle = (tech) => {
     const current = filters.technologies || [];
-    const updated = current.includes(tech)
-      ? current.filter(t => t !== tech)
-      : [...current, tech];
-    handleFilterChange('technologies', updated);
-  };
-
-  const handleCertificationToggle = (cert) => {
-    const current = filters.certifications || [];
-    const updated = current.includes(cert)
-      ? current.filter(c => c !== cert)
-      : [...current, cert];
-    handleFilterChange('certifications', updated);
+    const updated = current.includes(tech) ? current.filter(t => t !== tech) : [...current, tech];
+    setFilters(prev => ({ ...prev, technologies: updated }));
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Manufacturer's Pool</h1>
-        <p className="text-gray-600">Find and connect with manufacturers matching your needs</p>
+    <div className="max-w-7xl mx-auto py-10 px-4">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+             <div className="px-5 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                Supply Chain Verified
+             </div>
+             <Sparkles size={18} className="text-yellow-400" />
+          </div>
+          <h1 className="text-6xl font-black text-[#01364a] tracking-tighter mb-4">Global Discovery</h1>
+          <p className="text-gray-400 font-bold text-xl max-w-2xl">Connect with high-performance manufacturing partners audited for precision and reliability.</p>
+        </div>
+        
+        <div className="bg-[#01364a] text-white p-8 rounded-[3rem] shadow-2xl flex items-center gap-6 group hover:bg-black transition-all cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('open-ai-search'))}>
+           <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 group-hover:rotate-12 transition-transform">
+             <Sparkles size={28} />
+           </div>
+           <div>
+             <p className="font-black text-lg tracking-tight">AI Source Engine</p>
+             <p className="text-[10px] font-black uppercase tracking-widest opacity-50">Neural Matching Active</p>
+           </div>
+           <ChevronRight size={24} className="opacity-30 group-hover:opacity-100 transition-opacity" />
+        </div>
       </div>
 
-      {/* Search and Filter Bar */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search manufacturers..."
-              value={filters.keyword}
-              onChange={(e) => handleFilterChange('keyword', e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-            />
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Filter size={20} className="mr-2" />
-            Filters
-          </button>
+      {/* Advanced Search & Filtering */}
+      <div className="bg-white border border-gray-50 rounded-[3rem] p-8 mb-12 shadow-2xl shadow-blue-900/5">
+        <div className="flex flex-col lg:flex-row items-center gap-6 mb-8">
+           <div className="flex-1 w-full relative group">
+              <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#4881F8] transition-colors" size={24} />
+              <input
+                type="text"
+                placeholder="Search by specialty, machinery, or company name..."
+                value={filters.keyword}
+                onChange={(e) => setFilters({...filters, keyword: e.target.value})}
+                className="w-full pl-20 pr-10 py-7 bg-gray-50 border-2 border-transparent focus:border-[#4881F8] focus:bg-white rounded-[2rem] text-xl font-bold outline-none transition-all shadow-inner"
+              />
+           </div>
+           <div className="flex w-full lg:w-auto gap-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-10 py-7 rounded-[2rem] font-black text-sm flex items-center justify-center gap-4 transition-all shadow-xl hover:-translate-y-1 ${
+                  showFilters ? 'bg-blue-50 text-[#4881F8]' : 'bg-white text-gray-500 border border-gray-100'
+                }`}
+              >
+                <Filter size={20} /> Advanced Audit
+              </button>
+           </div>
         </div>
 
-        {/* Advanced Filters */}
         {showFilters && (
-          <div className="border-t border-gray-200 pt-4 mt-4 space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Part Type</label>
-                <select
-                  value={filters.partType}
-                  onChange={(e) => handleFilterChange('partType', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                >
-                  <option value="">All Part Types</option>
-                  {partTypeOptions.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Technologies</label>
-                <div className="max-h-32 overflow-y-auto space-y-2">
-                  {technologyOptions.map(tech => (
-                    <label key={tech} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.technologies?.includes(tech)}
-                        onChange={() => handleTechnologyToggle(tech)}
-                        className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                      />
-                      <span className="text-sm text-gray-700">{tech.replace('_', ' ')}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Material</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 py-8 border-t border-gray-50 animate-in fade-in slide-in-from-top-2">
+             <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Regional Anchor</label>
                 <input
                   type="text"
-                  value={filters.material}
-                  onChange={(e) => handleFilterChange('material', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., Steel, ABS, Wood"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-                <input
-                  type="text"
+                  placeholder="e.g. Germany / APAC"
                   value={filters.country}
-                  onChange={(e) => handleFilterChange('country', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., Germany, Austria"
+                  onChange={(e) => setFilters({...filters, country: e.target.value})}
+                  className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-bold outline-none"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Region</label>
-                <input
-                  type="text"
-                  value={filters.region}
-                  onChange={(e) => handleFilterChange('region', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., DACH, European Union"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Company Size</label>
-                <select
-                  value={filters.companySize}
-                  onChange={(e) => handleFilterChange('companySize', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                >
-                  <option value="">All Sizes</option>
-                  {companySizeOptions.map(size => (
-                    <option key={size} value={size}>{size} employees</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Machinery</label>
-                <input
-                  type="text"
-                  value={filters.machinery}
-                  onChange={(e) => handleFilterChange('machinery', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., Metrology machines"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Certifications</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {certificationOptions.map(cert => (
-                    <label key={cert} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.certifications?.includes(cert)}
-                        onChange={() => handleCertificationToggle(cert)}
-                        className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                      />
-                      <span className="text-sm text-gray-700">{cert.replace('_', ' ')}</span>
-                    </label>
+             </div>
+             <div className="lg:col-span-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Manufacturing Protocols</label>
+                <div className="flex flex-wrap gap-2">
+                  {technologyOptions.slice(0, 8).map(tech => (
+                    <button
+                      key={tech}
+                      onClick={() => handleTechnologyToggle(tech)}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${
+                        filters.technologies.includes(tech) ? 'bg-[#4881F8] text-white shadow-xl shadow-blue-500/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {tech}
+                    </button>
                   ))}
                 </div>
-              </div>
-            </div>
+             </div>
+             <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Facility Size</label>
+                <select 
+                   value={filters.companySize}
+                   onChange={(e) => setFilters({...filters, companySize: e.target.value})}
+                   className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-bold outline-none"
+                >
+                   <option value="">Any Size</option>
+                   {companySizeOptions.map(o => <option key={o} value={o}>{o} Employees</option>)}
+                </select>
+             </div>
           </div>
         )}
       </div>
 
-      {/* Results */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-            </div>
-          ))}
-        </div>
-      ) : manufacturers.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-          <Factory size={48} className="text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No manufacturers found</h3>
-          <p className="text-gray-600">Try adjusting your filters</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {manufacturers.map((manufacturer) => (
-            <div
-              key={manufacturer._id}
-              className="bg-white border border-gray-200 rounded-lg p-6 hover:border-[#4881F8] hover:shadow-md transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {manufacturer.companyName}
-                  </h3>
-                  <div className="flex items-center text-sm text-gray-600 mb-2">
-                    <MapPin size={14} className="mr-1" />
-                    {manufacturer.country} {manufacturer.region && `• ${manufacturer.region}`}
-                  </div>
-                  {manufacturer.rating && (
-                    <div className="flex items-center mb-2">
-                      <Star size={14} className="text-yellow-500 mr-1" />
-                      <span className="text-sm font-medium">{manufacturer.rating}</span>
-                      <span className="text-xs text-gray-500 ml-1">({manufacturer.reviewCount || 0} reviews)</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+      {/* Results Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {loading ? (
+          Array(6).fill(0).map((_, i) => <div key={i} className="h-96 bg-gray-50 rounded-[3rem] animate-pulse"></div>)
+        ) : (
+          manufacturers.map((mfr) => {
+            const hasVerifiedPlan = hasFeature(mfr, FEATURE_KEYS.VERIFIED_BADGE) || mfr.manufacturerSettings?.isVerified;
+            const hasCapacityPlan = hasFeature(mfr, FEATURE_KEYS.CAPACITY_DISPLAY);
+            const isEnterprise = mfr.planType === PLAN_TYPES.ENTERPRISE;
 
-              <div className="mb-4">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {manufacturer.manufacturingTypes?.slice(0, 3).map((tech, i) => (
-                    <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded">
-                      {tech.replace('_', ' ')}
-                    </span>
-                  ))}
-                  {manufacturer.manufacturingTypes?.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                      +{manufacturer.manufacturingTypes.length - 3}
-                    </span>
-                  )}
-                </div>
-                {manufacturer.companySize && (
-                  <div className="text-xs text-gray-600 mb-2">
-                    Company Size: {manufacturer.companySize} employees
+            return (
+              <div 
+                key={mfr._id}
+                className={`relative flex flex-col bg-white border rounded-[3rem] p-8 overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-2 group ${
+                  isEnterprise ? 'border-4 border-[#4881F8]/20 ring-8 ring-blue-50/50' : 'border-gray-50'
+                }`}
+              >
+                {/* Ranking Badge */}
+                {isEnterprise && (
+                  <div className="absolute top-0 right-0 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-3xl shadow-xl flex items-center gap-2">
+                    <Award size={14} /> Enterprise Partner
                   </div>
                 )}
-                <div className="flex flex-wrap gap-2">
-                  {manufacturer.certifications?.slice(0, 2).map((cert, i) => (
-                    <span key={i} className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
-                      {cert.replace('_', ' ')}
-                    </span>
-                  ))}
+                
+                {/* Profile Header */}
+                <div className="flex items-start justify-between mb-8">
+                   <div className="w-20 h-20 rounded-[1.8rem] bg-blue-50 p-3 border border-blue-100 flex items-center justify-center relative overflow-hidden group-hover:scale-110 transition-transform">
+                      {mfr.displayLogo ? (
+                        <img src={mfr.displayLogo} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        mfr.isFree ? <Lock className="text-[#01364a] opacity-10" size={32} /> : <Factory className="text-[#4881F8]" size={32} />
+                      )}
+                      
+                      {mfr.isFree && (
+                        <div className="absolute inset-0 bg-blue-900/5 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Lock size={16} className="text-[#01364a]" />
+                        </div>
+                      )}
+                   </div>
+                   
+                   <div className="flex gap-2">
+                      {hasVerifiedPlan && (
+                        <div className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/30">
+                          <Shield size={20} className="fill-current" />
+                        </div>
+                      )}
+                      {hasCapacityPlan && (
+                        <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100 animate-pulse">
+                          <Zap size={20} className="fill-current" />
+                        </div>
+                      )}
+                   </div>
+                </div>
+
+                <div className="flex-1">
+                   <h3 className="text-3xl font-black text-[#01364a] tracking-tight mb-2 group-hover:text-[#4881F8] transition-colors">{mfr.displayName}</h3>
+                   <div className="flex items-center gap-4 text-xs font-bold text-gray-400 mb-6 uppercase tracking-widest">
+                      <div className="flex items-center gap-2"><MapPin size={14} className="text-[#4881F8]" /> {mfr.displayCountry}</div>
+                      {mfr.isPremium && <div className="flex items-center gap-2"><Star size={14} className="text-yellow-400 fill-current" /> {mfr.manufacturerSettings?.rating || '4.9'}</div>}
+                   </div>
+                   
+                   <div className="flex flex-wrap gap-2 mb-8">
+                      {(mfr.manufacturerSettings?.technologies || []).slice(0, 2).map((t, idx) => (
+                        <span key={idx} className="px-4 py-1.5 bg-gray-50 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-100">
+                          {t.replace('_', ' ')}
+                        </span>
+                      ))}
+                      {(mfr.manufacturerSettings?.technologies || []).length > 2 && (
+                         <span className="px-4 py-1.5 bg-blue-50 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-lg">+{(mfr.manufacturerSettings?.technologies || []).length - 2} More</span>
+                      )}
+                   </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                   <Link 
+                    to={`/manufacturer/${mfr._id}`}
+                    className="w-full py-5 bg-[#01364a] text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10 hover:bg-black transition-all"
+                   >
+                     Inspect Profile <ChevronRight size={18} />
+                   </Link>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
-                <Link
-                  to={`/manufacturer/${manufacturer._id}`}
-                  className="flex-1 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-                >
-                  <Eye size={16} className="mr-2" />
-                  View Profile
-                </Link>
-                <button
-                  onClick={() => {
-                    setSelectedManufacturer(manufacturer);
-                    setShowInviteModal(true);
-                  }}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] transition-colors text-sm"
-                >
-                  <Mail size={16} className="mr-2" />
-                  Invite
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-semibold mb-4">Invite to RFQ</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Select an RFQ to invite <strong>{selectedManufacturer?.companyName}</strong> to:
-            </p>
-            <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
-              {availableRFQs.length === 0 ? (
-                <p className="text-sm text-gray-500">No open RFQs available</p>
-              ) : (
-                availableRFQs.map((rfq) => (
-                  <button
-                    key={rfq._id}
-                    onClick={() => handleInvite(rfq._id)}
-                    className="w-full text-left p-3 border border-gray-200 rounded-lg hover:border-[#4881F8] hover:bg-blue-50 transition-colors"
-                  >
-                    <div className="font-medium">{rfq.title}</div>
-                    <div className="text-xs text-gray-600">RFQ #{rfq._id.toString().slice(-6)}</div>
-                  </button>
-                ))
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowInviteModal(false);
-                  setSelectedManufacturer(null);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <Link
-                to="/start-rfq"
-                className="flex-1 px-4 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] transition-colors text-center"
-              >
-                Create New RFQ
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+            )
+          })
+        )}
+      </div>
     </div>
   );
 };

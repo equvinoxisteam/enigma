@@ -3,12 +3,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Upload } from 'lucide-react';
 import { authAPI } from '../../api/authAPI';
 import { useToast } from '../../contexts/ToastContext';
+import { countries } from '../../data/countries';
 
 const EnigmaRegisterPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { showSuccess, showError } = useToast();
   const role = searchParams.get('role') || 'BUYER';
+  const isBuyer = role === 'BUYER';
+  const isManufacturer = role === 'MANUFACTURER';
+  const isHybrid = role === 'HYBRID';
 
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +28,7 @@ const EnigmaRegisterPage = () => {
     password: '',
     confirmPassword: '',
     phoneNumber: '',
+    phoneCode: '+91',
     country: 'India',
     
     // Company Info
@@ -149,7 +154,7 @@ const EnigmaRegisterPage = () => {
       }
       
       if (!formData.phoneNumber) newErrors.phoneNumber = 'Phone number is required';
-      else if (!/^[6-9]\d{9}$/.test(formData.phoneNumber)) newErrors.phoneNumber = 'Invalid phone number';
+      else if (!/^\d{7,15}$/.test(formData.phoneNumber)) newErrors.phoneNumber = 'Invalid phone number';
     }
     
     if (step === 2) {
@@ -160,8 +165,8 @@ const EnigmaRegisterPage = () => {
       if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
       else if (!/^[0-9]{5,6}$/.test(formData.zipCode)) newErrors.zipCode = 'Invalid zip code';
       
-      // Manufacturing types required for all user types
-      if (formData.manufacturingTypes.length === 0) {
+      // Manufacturing types are required only for manufacturer-capable roles
+      if ((isManufacturer || isHybrid) && formData.manufacturingTypes.length === 0) {
         newErrors.manufacturingTypes = 'Select at least one manufacturing type';
       }
     }
@@ -187,8 +192,12 @@ const EnigmaRegisterPage = () => {
     setIsSubmitting(true);
     
     try {
+      const fullPhoneNumber = `${formData.phoneCode}${formData.phoneNumber}`;
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       const payload = {
         ...formData,
+        fullName,
+        phoneNumber: fullPhoneNumber,
         userType: role,
         maxDimensions: {
           height: parseFloat(formData.maxDimensions.height) || 0,
@@ -196,6 +205,11 @@ const EnigmaRegisterPage = () => {
           length: parseFloat(formData.maxDimensions.length) || 0
         }
       };
+
+      // Keep payload role-specific to avoid accidental validation issues
+      if (isBuyer) {
+        payload.manufacturingTypes = [];
+      }
       
       const response = await authAPI.register(payload);
       
@@ -212,88 +226,64 @@ const EnigmaRegisterPage = () => {
     }
   };
 
-  const totalSteps = role === 'HYBRID' ? 3 : 2;
+  const totalSteps = 2;
+
+  const roleLabel = role === 'BUYER' ? 'Buyer' : role === 'MANUFACTURER' ? 'Manufacturer' : 'Hybrid';
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#06091a 0%,#0d1433 50%,#0f172a 100%)', fontFamily: "'Inter',sans-serif", padding: '2rem 1rem' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        .reg-input { width:100%; padding:0.75rem 1rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#fff; font-size:0.9rem; outline:none; transition:all 0.2s; box-sizing:border-box; }
+        .reg-input:focus { border-color:rgba(72,129,248,0.6); background:rgba(72,129,248,0.06); box-shadow:0 0 0 3px rgba(72,129,248,0.12); }
+        .reg-input::placeholder { color:rgba(255,255,255,0.28); }
+        .reg-label { display:block; color:rgba(255,255,255,0.7); font-size:0.82rem; font-weight:500; margin-bottom:0.4rem; }
+        .reg-error { color:rgba(248,113,113,0.9); font-size:0.78rem; margin-top:0.3rem; }
+        .reg-section-title { color:#fff; font-size:1.2rem; font-weight:700; margin-bottom:1.25rem; }
+        .reg-check { accent-color:#4881F8; width:15px; height:15px; cursor:pointer; }
+        select.reg-input option { background:#0d1433; color:#fff; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+      `}</style>
+      <div style={{ maxWidth: '860px', margin: '0 auto' }}>
         {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate('/role-selection')}
-            className="flex items-center text-gray-600 hover:text-[#4881F8] mb-4"
-          >
-            <ArrowLeft className="mr-2" size={20} />
-            Back to Role Selection
-          </button>
-          <div className="flex justify-center mb-4">
-            <img 
-              src="/indianet png.png" 
-              alt="Enigma Logo" 
-              className="h-12 w-auto object-contain"
-            />
+        <div style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <img src="/indianet png.png" alt="Enigma" style={{ height: '52px', width: 'auto', filter: 'brightness(1.1)', margin: '0 auto' }} />
           </div>
-          <h1 className="text-3xl font-bold mb-2 text-center" style={{ color: '#4881F8' }}>
-            {role === 'BUYER' && 'Sign up as Buyer'}
-            {role === 'MANUFACTURER' && 'Sign up as Manufacturer'}
-            {role === 'HYBRID' && 'Sign up as Hybrid'}
+          <button onClick={() => navigate('/role-selection')} style={{ display:'inline-flex', alignItems:'center', gap:'0.4rem', color:'rgba(255,255,255,0.45)', background:'none', border:'none', cursor:'pointer', fontSize:'0.875rem', marginBottom:'1rem' }}>
+            <ArrowLeft size={16} /> Back to Role Selection
+          </button>
+          
+          <h1 style={{ color:'#fff', fontSize:'clamp(1.5rem,3vw,2rem)', fontWeight:800, marginBottom:'0.4rem', letterSpacing:'-0.015em' }}>
+            Sign up as <span style={{ background:'linear-gradient(90deg,#4881F8,#a78bfa)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{roleLabel}</span>
           </h1>
-          <p className="text-gray-600 text-center">Complete your registration to get started</p>
+          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.9rem' }}>Complete your registration to get started</p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            {[...Array(totalSteps)].map((_, i) => (
-              <div key={i} className="flex-1 flex items-center">
-                <div className="flex-1 flex items-center">
-                  <div
-                    className={`h-2 rounded-full flex-1 ${
-                      i + 1 <= currentStep ? 'bg-[#4881F8]' : 'bg-gray-200'
-                    }`}
-                  />
-                </div>
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mx-2 ${
-                    i + 1 <= currentStep
-                      ? 'bg-[#4881F8] text-white'
-                      : 'bg-gray-200 text-gray-600'
-                  }`}
-                >
-                  {i + 1}
-                </div>
-                <div className="flex-1 flex items-center">
-                  {i < totalSteps - 1 && (
-                    <div
-                      className={`h-2 rounded-full flex-1 ${
-                        i + 1 < currentStep ? 'bg-[#4881F8]' : 'bg-gray-200'
-                      }`}
-                    />
-                  )}
-                </div>
+        {/* Progress Steps */}
+        <div style={{ display:'flex', alignItems:'center', gap:'0', marginBottom:'2rem', justifyContent:'center' }}>
+          {[...Array(totalSteps)].map((_, i) => (
+            <React.Fragment key={i}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                <div style={{ width:'36px', height:'36px', borderRadius:'50%', background: i+1 <= currentStep ? 'linear-gradient(135deg,#4881F8,#6366f1)' : 'rgba(255,255,255,0.08)', border: i+1 <= currentStep ? 'none' : '1px solid rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.85rem', color: i+1 <= currentStep ? '#fff' : 'rgba(255,255,255,0.4)', transition:'all 0.3s', boxShadow: i+1 <= currentStep ? '0 0 16px rgba(72,129,248,0.3)' : 'none' }}>{i+1}</div>
+                <span style={{ color: i+1 <= currentStep ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)', fontSize:'0.7rem', marginTop:'0.35rem', fontWeight:500 }}>{['Basic Info','Company'][i] || 'Extra'}</span>
               </div>
-            ))}
-          </div>
+              {i < totalSteps - 1 && <div style={{ flex:1, height:'2px', background: i+1 < currentStep ? '#4881F8' : 'rgba(255,255,255,0.08)', margin:'0 0.75rem', marginBottom:'1.4rem', transition:'background 0.3s' }} />}
+            </React.Fragment>
+          ))}
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-8">
+        <form onSubmit={handleSubmit} style={{ background:'rgba(255,255,255,0.04)', backdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'20px', padding:'2.5rem 2rem' }}>
           {/* Step 1: Basic Information */}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-6">Basic Information</h2>
+              <h2 className="reg-section-title">Basic Information</h2>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Title
-                  </label>
-                  <select
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  >
+                  <label className="reg-label">Title</label>
+                  <select name="title" value={formData.title} onChange={handleChange} className="reg-input">
                     <option value="">Select</option>
                     <option value="Mr">Mr</option>
                     <option value="Mrs">Mrs</option>
@@ -303,193 +293,108 @@ const EnigmaRegisterPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.fullName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
+                  <label className="reg-label">Full Name *</label>
+                  <input type="text" name="fullName" value={formData.fullName} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.fullName ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.fullName && <p className="reg-error">{errors.fullName}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                  <label className="reg-label">Email *</label>
+                  <input type="email" name="email" value={formData.email} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.email ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.email && <p className="reg-error">{errors.email}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="10-digit mobile number"
-                    required
-                  />
-                  {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
+                  <label className="reg-label">Phone Number *</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select 
+                      name="phoneCode" 
+                      value={formData.phoneCode} 
                       onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent pr-10 ${
-                        errors.password ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      className="reg-input"
+                      style={{ width: '100px', flexShrink: 0 }}
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {countries.map(c => (
+                        <option key={`${c.iso}-${c.code}`} value={c.code}>
+                          {c.iso} {c.code}
+                        </option>
+                      ))}
+                    </select>
+                    <input 
+                      type="tel" 
+                      name="phoneNumber" 
+                      value={formData.phoneNumber} 
+                      onChange={handleChange}
+                      className="reg-input" 
+                      style={{ borderColor: errors.phoneNumber ? 'rgba(248,113,113,0.7)' : '' }}
+                      placeholder="Mobile number" 
+                      required 
+                    />
+                  </div>
+                  {errors.phoneNumber && <p className="reg-error">{errors.phoneNumber}</p>}
+                </div>
+
+                <div>
+                  <label className="reg-label">Password *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password}
+                      onChange={handleChange} className="reg-input" style={{ paddingRight: '2.5rem', borderColor: errors.password ? 'rgba(248,113,113,0.7)' : '' }} required />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0 }}>
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                  
-                  {/* Password Strength Indicator */}
                   {formData.password && (
-                    <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${
-                            getPasswordStrength(formData.password) < 40 ? 'bg-red-500' :
-                            getPasswordStrength(formData.password) < 70 ? 'bg-yellow-500' :
-                            'bg-green-500'
-                          }`}
-                          style={{ width: `${getPasswordStrength(formData.password)}%` }}
-                        />
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '4px', marginBottom: '0.25rem' }}>
+                        {[1,2,3,4,5].map(i => {
+                          const s = Object.values(validatePassword(formData.password)).filter(Boolean).length;
+                          const c = s < 2 ? '#ef4444' : s < 4 ? '#eab308' : '#22c55e';
+                          return <div key={i} style={{ flex:1, height:'3px', borderRadius:'2px', background: i <= s ? c : 'rgba(255,255,255,0.1)', transition:'background 0.3s' }} />;
+                        })}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Password strength: {
-                          getPasswordStrength(formData.password) < 40 ? 'Weak' :
-                          getPasswordStrength(formData.password) < 70 ? 'Medium' :
-                          'Strong'
-                        }
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Password Rules */}
-                  {formData.password && (
-                    <div className="mt-2 text-xs space-y-1">
-                      <p className="text-gray-600 font-medium mb-2">Password must contain:</p>
-                      <div className="space-y-1">
-                        <div className={`flex items-center ${formData.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
-                          <span className="mr-2">{formData.password.length >= 8 ? '✓' : '○'}</span>
-                          <span>At least 8 characters</span>
-                        </div>
-                        <div className={`flex items-center ${/[A-Z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                          <span className="mr-2">{/[A-Z]/.test(formData.password) ? '✓' : '○'}</span>
-                          <span>One uppercase letter</span>
-                        </div>
-                        <div className={`flex items-center ${/[a-z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                          <span className="mr-2">{/[a-z]/.test(formData.password) ? '✓' : '○'}</span>
-                          <span>One lowercase letter</span>
-                        </div>
-                        <div className={`flex items-center ${/\d/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                          <span className="mr-2">{/\d/.test(formData.password) ? '✓' : '○'}</span>
-                          <span>One number</span>
-                        </div>
-                        <div className={`flex items-center ${/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
-                          <span className="mr-2">{/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? '✓' : '○'}</span>
-                          <span>One special character (!@#$%^&*(),.?":{}|&lt;&gt;)</span>
-                        </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'2px', marginTop:'0.4rem' }}>
+                        {[[formData.password.length >= 8,'8+ characters'],[/[A-Z]/.test(formData.password),'Uppercase'],[/[a-z]/.test(formData.password),'Lowercase'],[/\d/.test(formData.password),'Number'],[/[!@#$%^&*(),.?":{}|<>]/.test(formData.password),'Special char']].map(([ok,label]) => (
+                          <span key={label} style={{ color: ok ? '#22c55e' : 'rgba(255,255,255,0.3)', fontSize:'0.72rem' }}>{ok ? '✓' : '○'} {label}</span>
+                        ))}
                       </div>
                     </div>
                   )}
-                  
-                  {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                  {errors.password && <p className="reg-error">{errors.password}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent pr-10 ${
-                        errors.confirmPassword 
-                          ? 'border-red-500' 
-                          : formData.confirmPassword && formData.password === formData.confirmPassword
-                          ? 'border-green-500'
-                          : 'border-gray-300'
-                      }`}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    >
-                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  <label className="reg-label">Confirm Password *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword}
+                      onChange={handleChange} className="reg-input" style={{ paddingRight: '2.5rem', borderColor: errors.confirmPassword ? 'rgba(248,113,113,0.7)' : formData.confirmPassword && formData.password === formData.confirmPassword ? 'rgba(34,197,94,0.5)' : '' }} required />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0 }}>
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
-                  
-                  {/* Password Match Indicator */}
                   {formData.confirmPassword && (
-                    <div className="mt-1">
-                      {formData.password === formData.confirmPassword ? (
-                        <p className="text-green-600 text-sm flex items-center">
-                          <span className="mr-1">✓</span> Passwords match
-                        </p>
-                      ) : (
-                        <p className="text-red-500 text-sm flex items-center">
-                          <span className="mr-1">✗</span> Passwords do not match
-                        </p>
-                      )}
-                    </div>
+                    <p style={{ color: formData.password === formData.confirmPassword ? '#22c55e' : 'rgba(248,113,113,0.9)', fontSize: '0.78rem', marginTop: '0.3rem' }}>
+                      {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                    </p>
                   )}
-                  
-                  {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+                  {errors.confirmPassword && <p className="reg-error">{errors.confirmPassword}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Country
-                  </label>
-                  <input
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  />
+                  <label className="reg-label">Country</label>
+                  <select 
+                    name="country" 
+                    value={formData.country} 
+                    onChange={handleChange} 
+                    className="reg-input"
+                  >
+                    {countries.map(c => (
+                      <option key={c.name} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -498,347 +403,187 @@ const EnigmaRegisterPage = () => {
           {/* Step 2: Company & Address */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-6">Company & Address Information</h2>
+              <h2 className="reg-section-title">Company & Address Information</h2>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.companyName ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.companyName && <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>}
+                  <label className="reg-label">Company Name *</label>
+                  <input type="text" name="companyName" value={formData.companyName} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.companyName ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.companyName && <p className="reg-error">{errors.companyName}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Website
-                  </label>
-                  <input
-                    type="url"
-                    name="website"
-                    value={formData.website}
-                    onChange={handleChange}
-                    placeholder="Enter the Website if any"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  />
+                  <label className="reg-label">Website</label>
+                  <input type="url" name="website" value={formData.website} onChange={handleChange}
+                    placeholder="Enter the Website if any" className="reg-input" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company GST/VAT Number
-                  </label>
-                  <input
-                    type="text"
-                    name="gstNumber"
-                    value={formData.gstNumber}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  />
+                  <label className="reg-label">Company GST/VAT Number</label>
+                  <input type="text" name="gstNumber" value={formData.gstNumber} onChange={handleChange} className="reg-input" />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Address *
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.address ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                  <label className="reg-label">Address *</label>
+                  <input type="text" name="address" value={formData.address} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.address ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.address && <p className="reg-error">{errors.address}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.city ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+                  <label className="reg-label">City *</label>
+                  <input type="text" name="city" value={formData.city} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.city ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.city && <p className="reg-error">{errors.city}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    State *
-                  </label>
-                  <input
-                    type="text"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.state ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
+                  <label className="reg-label">State *</label>
+                  <input type="text" name="state" value={formData.state} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.state ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.state && <p className="reg-error">{errors.state}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Zip Code *
-                  </label>
-                  <input
-                    type="text"
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent ${
-                      errors.zipCode ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  />
-                  {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
+                  <label className="reg-label">Zip Code *</label>
+                  <input type="text" name="zipCode" value={formData.zipCode} onChange={handleChange}
+                    className="reg-input" style={{ borderColor: errors.zipCode ? 'rgba(248,113,113,0.7)' : '' }} required />
+                  {errors.zipCode && <p className="reg-error">{errors.zipCode}</p>}
                 </div>
               </div>
 
-              {/* Manufacturing Capabilities - Show for ALL user types */}
-              <div className="mt-8 space-y-6 border-t pt-6">
-                <h3 className="text-xl font-semibold">Manufacturing Capabilities</h3>
+              {/* Manufacturing Capabilities */}
+              {!isBuyer && (
+              <div style={{ marginTop:'2rem', paddingTop:'1.5rem', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+                <h3 style={{ color:'rgba(255,255,255,0.85)', fontSize:'1rem', fontWeight:600, marginBottom:'1.25rem' }}>Manufacturing Capabilities</h3>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Manufacturing Types * (Select at least one)
-                  </label>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="reg-label">Manufacturing Types * (Select at least one)</label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {manufacturingTypesOptions.map((type) => (
-                      <label key={type} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.manufacturingTypes.includes(type)}
-                          onChange={() => handleArrayChange('manufacturingTypes', type)}
-                          className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                        />
-                        <span className="text-sm text-gray-700">{type.replace('_', ' ')}</span>
+                      <label key={type} style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:'0.85rem' }}>
+                        <input type="checkbox" checked={formData.manufacturingTypes.includes(type)}
+                          onChange={() => handleArrayChange('manufacturingTypes', type)} className="reg-check" />
+                        {type.replace('_', ' ')}
                       </label>
                     ))}
                   </div>
-                  {errors.manufacturingTypes && (
-                    <p className="text-red-500 text-sm mt-1">{errors.manufacturingTypes}</p>
-                  )}
+                  {errors.manufacturingTypes && <p className="reg-error">{errors.manufacturingTypes}</p>}
                 </div>
 
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Max Height (mm)
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.maxDimensions.height}
-                        onChange={(e) => handleDimensionChange('height', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Max Width (mm)
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.maxDimensions.width}
-                        onChange={(e) => handleDimensionChange('width', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Max Length (mm)
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.maxDimensions.length}
-                        onChange={(e) => handleDimensionChange('length', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
+                <div className="grid md:grid-cols-3 gap-4" style={{ marginBottom: '1.5rem' }}>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primary Materials
-                    </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {materialOptions.map((material) => (
-                        <label key={material} className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.primaryMaterials.includes(material)}
-                            onChange={() => handleArrayChange('primaryMaterials', material)}
-                            className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                          />
-                          <span className="text-sm text-gray-700">{material}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="reg-label">Max Height (mm)</label>
+                    <input type="number" value={formData.maxDimensions.height}
+                      onChange={(e) => handleDimensionChange('height', e.target.value)} className="reg-input" />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Certifications
-                    </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {certificationOptions.map((cert) => (
-                        <label key={cert} className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.certifications.includes(cert)}
-                            onChange={() => handleArrayChange('certifications', cert)}
-                            className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                          />
-                          <span className="text-sm text-gray-700">{cert.replace('_', ' ')}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <label className="reg-label">Max Width (mm)</label>
+                    <input type="number" value={formData.maxDimensions.width}
+                      onChange={(e) => handleDimensionChange('width', e.target.value)} className="reg-input" />
                   </div>
+                  <div>
+                    <label className="reg-label">Max Length (mm)</label>
+                    <input type="number" value={formData.maxDimensions.length}
+                      onChange={(e) => handleDimensionChange('length', e.target.value)} className="reg-input" />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="reg-label">Primary Materials</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {materialOptions.map((material) => (
+                      <label key={material} style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:'0.85rem' }}>
+                        <input type="checkbox" checked={formData.primaryMaterials.includes(material)}
+                          onChange={() => handleArrayChange('primaryMaterials', material)} className="reg-check" />
+                        {material}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="reg-label">Certifications</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {certificationOptions.map((cert) => (
+                      <label key={cert} style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:'0.85rem' }}>
+                        <input type="checkbox" checked={formData.certifications.includes(cert)}
+                          onChange={() => handleArrayChange('certifications', cert)} className="reg-check" />
+                        {cert.replace('_', ' ')}
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Company Size (employees)
-                    </label>
-                    <input
-                      type="text"
-                      name="companySize"
-                      value={formData.companySize}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    />
+                    <label className="reg-label">Company Size (employees)</label>
+                    <input type="text" name="companySize" value={formData.companySize}
+                      onChange={handleChange} className="reg-input" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Years in Business
-                    </label>
-                    <input
-                      type="number"
-                      name="yearsInBusiness"
-                      value={formData.yearsInBusiness}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    />
+                    <label className="reg-label">Years in Business</label>
+                    <input type="number" name="yearsInBusiness" value={formData.yearsInBusiness}
+                      onChange={handleChange} className="reg-input" />
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Buyer Information - Show for ALL user types */}
-              <div className="mt-8 space-y-6 border-t pt-6">
-                <h3 className="text-xl font-semibold">Buyer Information</h3>
-                  
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Industry Vertical
-                      </label>
-                      <input
-                        type="text"
-                        name="industryVertical"
-                        value={formData.industryVertical}
-                        onChange={handleChange}
-                        placeholder="e.g., Automotive, Aerospace, Medical"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Annual Spending
-                      </label>
-                      <input
-                        type="text"
-                        name="annualSpending"
-                        value={formData.annualSpending}
-                        onChange={handleChange}
-                        placeholder="Estimated annual spending"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Procurement Team Size
-                      </label>
-                      <input
-                        type="text"
-                        name="procurementTeamSize"
-                        value={formData.procurementTeamSize}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Preferred Lead Time
-                      </label>
-                      <input
-                        type="text"
-                        name="preferredLeadTime"
-                        value={formData.preferredLeadTime}
-                        onChange={handleChange}
-                        placeholder="e.g., 2-4 weeks"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      />
-                    </div>
+              {/* Buyer Information */}
+              {(isBuyer || isHybrid) && (
+              <div style={{ marginTop:'2rem', paddingTop:'1.5rem', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+                <h3 style={{ color:'rgba(255,255,255,0.85)', fontSize:'1rem', fontWeight:600, marginBottom:'1.25rem' }}>Buyer Information</h3>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="reg-label">Industry Vertical</label>
+                    <input type="text" name="industryVertical" value={formData.industryVertical} onChange={handleChange}
+                      placeholder="e.g., Automotive, Aerospace" className="reg-input" />
                   </div>
+                  <div>
+                    <label className="reg-label">Annual Spending</label>
+                    <input type="text" name="annualSpending" value={formData.annualSpending} onChange={handleChange}
+                      placeholder="Estimated annual spend" className="reg-input" />
+                  </div>
+                  <div>
+                    <label className="reg-label">Procurement Team Size</label>
+                    <input type="text" name="procurementTeamSize" value={formData.procurementTeamSize} onChange={handleChange} className="reg-input" />
+                  </div>
+                  <div>
+                    <label className="reg-label">Preferred Lead Time</label>
+                    <input type="text" name="preferredLeadTime" value={formData.preferredLeadTime} onChange={handleChange}
+                      placeholder="e.g., 2-4 weeks" className="reg-input" />
+                  </div>
+                </div>
               </div>
+              )}
             </div>
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 pt-6 border-t">
-            <button
-              type="button"
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              className={`px-6 py-2 rounded-lg border ${
-                currentStep === 1
-                  ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:'2rem', paddingTop:'1.5rem', borderTop:'1px solid rgba(255,255,255,0.08)', alignItems:'center' }}>
+            <button type="button" onClick={handleBack} disabled={currentStep === 1}
+              style={{ padding:'0.7rem 1.5rem', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.15)', background:'transparent', color: currentStep === 1 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)', cursor: currentStep === 1 ? 'not-allowed' : 'pointer', fontSize:'0.9rem', fontWeight:500, transition:'all 0.2s' }}>
               Back
             </button>
-            
             {currentStep < totalSteps ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="px-6 py-2 rounded-lg text-white font-medium"
-                style={{ backgroundColor: '#4881F8' }}
-              >
-                Next
+              <button type="button" onClick={handleNext}
+                style={{ padding:'0.7rem 2rem', borderRadius:'10px', background:'linear-gradient(135deg,#4881F8,#6366f1)', border:'none', color:'#fff', fontSize:'0.9rem', fontWeight:600, cursor:'pointer', transition:'opacity 0.2s' }}>
+                Next →
               </button>
             ) : (
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2 rounded-lg text-white font-medium disabled:opacity-50"
-                style={{ backgroundColor: '#4881F8' }}
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit'}
+              <button type="submit" disabled={isSubmitting}
+                style={{ padding:'0.7rem 2rem', borderRadius:'10px', background:'linear-gradient(135deg,#4881F8,#6366f1)', border:'none', color:'#fff', fontSize:'0.9rem', fontWeight:600, cursor: isSubmitting ? 'not-allowed' : 'pointer', opacity: isSubmitting ? 0.6 : 1, display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                {isSubmitting ? <><span style={{ width:'16px', height:'16px', border:'2px solid rgba(255,255,255,0.3)', borderTop:'2px solid #fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.7s linear infinite' }} /> Submitting...</> : 'Create Account'}
               </button>
             )}
           </div>
         </form>
+        <div style={{ textAlign:'center', marginTop:'1.5rem' }}>
+          <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.875rem' }}>Already have an account? <button onClick={() => navigate('/login')} style={{ color:'#4881F8', fontWeight:600, background:'none', border:'none', cursor:'pointer', fontSize:'inherit' }}>Sign In</button></p>
+        </div>
       </div>
     </div>
   );

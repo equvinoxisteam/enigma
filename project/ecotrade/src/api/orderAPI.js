@@ -35,6 +35,17 @@ const verifyPayment = async (paymentData, token) => {
   return response.data;
 };
 
+// Verify subscription payment
+const verifySubscription = async (paymentData, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  };
+  const response = await axios.post(`${API_URL}/verify-subscription`, paymentData, config);
+  return response.data;
+};
+
 const getOrderById = async (id, token) => {
   const config = {
     headers: {
@@ -100,6 +111,7 @@ export const orderAPI = {
   createRazorpayOrder,
   createOrder,
   verifyPayment,
+  verifySubscription,
   getOrderById,
   getMyOrders,
   updateOrderToPaid,

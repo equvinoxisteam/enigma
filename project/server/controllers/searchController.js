@@ -197,13 +197,35 @@ const searchManufacturersController = async (req, res) => {
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Execute query
-    const manufacturers = await User.find(query)
-      .select('-password -emailVerificationToken -passwordResetToken')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    // Execute aggregation for ranking and sorting
+    const manufacturers = await User.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          planRank: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$subscription.planType", "ENTERPRISE"] }, then: 100 },
+                { case: { $eq: ["$subscription.planType", "PRO"] }, then: 80 },
+                { case: { $eq: ["$subscription.planType", "STANDARD"] }, then: 60 },
+                { case: { $eq: ["$subscription.planType", "FREE"] }, then: 0 }
+              ],
+              default: 0
+            }
+          }
+        }
+      },
+      { $sort: { planRank: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) },
+      {
+        $project: {
+          password: 0,
+          emailVerificationToken: 0,
+          passwordResetToken: 0
+        }
+      }
+    ]);
 
     const total = await User.countDocuments(query);
 
@@ -227,7 +249,117 @@ const searchManufacturersController = async (req, res) => {
   }
 };
 
+// @desc    Get AI Recommendations for RFQs (based on manufacturer profile)
+// @route   GET /api/search/recommendations
+// @access  Private
+const getRecommendationsController = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const { userType, manufacturerSettings } = user;
+    let query = {
+      status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] }
+    };
+
+    // If manufacturer, recommend RFQs matching their skills
+    if (userType === 'MANUFACTURER' || userType === 'HYBRID') {
+      const { technologies, materials } = manufacturerSettings || {};
+      
+      const shouldMatch = [];
+      if (technologies && technologies.length > 0) {
+        shouldMatch.push({ 'workpieces.technology': { $in: technologies } });
+      }
+      if (materials && materials.length > 0) {
+        shouldMatch.push({ 'workpieces.material': { $in: materials.map(m => new RegExp(m, 'i')) } });
+      }
+
+      if (shouldMatch.length > 0) {
+        query.$or = shouldMatch;
+      }
+    }
+
+    const recommendations = await RFQ.find(query)
+      .populate('buyerId', 'companyName country')
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .lean();
+
+    res.json({
+      success: true,
+      data: recommendations
+    });
+  } catch (error) {
+    console.error('Error in recommendations controller:', error);
+    res.status(500).json({ success: false, message: 'Error fetching recommendations' });
+  }
+};
+
+// @desc    Universal AI Search across RFQs and Manufacturers
+// @route   GET /api/search/ai
+// @access  Private
+const aiSearchController = async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ success: false, message: 'Search query is required' });
+    }
+
+    const normalizedQuery = query.toLowerCase();
+    
+    // Identify keywords for technology and materials
+    const techs = ['cnc', '3d printing', 'milling', 'turning', 'sheet metal', 'welding', 'assembly', 'injection molding'];
+    const detectedTechs = techs.filter(t => normalizedQuery.includes(t.toLowerCase()))
+                               .map(t => t.toUpperCase().replace(' ', '_'));
+
+    // 1. Search RFQs
+    let rfqQuery = {
+      status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] },
+      $or: [
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } }
+      ]
+    };
+    if (detectedTechs.length > 0) {
+      rfqQuery.$or.push({ 'workpieces.technology': { $in: detectedTechs } });
+    }
+
+    const rfqs = await RFQ.find(rfqQuery).limit(5).lean();
+
+    // 2. Search Manufacturers
+    let mfrQuery = {
+      userType: { $in: ['MANUFACTURER', 'HYBRID'] },
+      manufacturerStatus: 'ACTIVE',
+      $or: [
+        { companyName: { $regex: query, $options: 'i' } },
+        { 'manufacturerSettings.partTypes': { $regex: query, $options: 'i' } }
+      ]
+    };
+    if (detectedTechs.length > 0) {
+      mfrQuery.$or.push({ 'manufacturerSettings.technologies': { $in: detectedTechs } });
+    }
+
+    const manufacturers = await User.find(mfrQuery).select('-password').limit(5).lean();
+
+    res.json({
+      success: true,
+      data: {
+        rfqs,
+        manufacturers,
+        suggestions: detectedTechs.length > 0 ? `Showing results for ${detectedTechs.join(', ')} capabilities.` : null
+      }
+    });
+  } catch (error) {
+    console.error('Error in AI search controller:', error);
+    res.status(500).json({ success: false, message: 'AI search error' });
+  }
+};
+
 module.exports = {
   searchRFQsController,
-  searchManufacturersController
+  searchManufacturersController,
+  getRecommendationsController,
+  aiSearchController
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Lock, Bell, Globe, Palette, Save } from 'lucide-react';
+import { profileAPI } from '../api/profileAPI';
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -12,7 +13,6 @@ const SettingsPage = () => {
     password: '',
     newPassword: '',
     confirmPassword: '',
-    twoFactorEnabled: false,
     emailNotifications: {
       rfqRequests: true,
       invitations: true,
@@ -35,6 +35,28 @@ const SettingsPage = () => {
     }
   });
 
+  React.useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await profileAPI.getSettings();
+        if (response?.success && response?.data) {
+          setSettings((prev) => ({
+            ...prev,
+            emailNotifications: response.data.emailNotifications || prev.emailNotifications,
+            inAppNotifications: response.data.inAppNotifications || prev.inAppNotifications,
+            preferences: {
+              ...prev.preferences,
+              ...(response.data.preferences || {})
+            }
+          }));
+        }
+      } catch (error) {
+        showError('Failed to load settings');
+      }
+    };
+    fetchSettings();
+  }, [showError]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name.includes('.')) {
@@ -56,17 +78,53 @@ const SettingsPage = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    // TODO: Implement password change API call
-    showSuccess('Password updated successfully');
+    if (!settings.password || !settings.newPassword || !settings.confirmPassword) {
+      showError('Please fill all password fields');
+      return;
+    }
+    if (settings.newPassword !== settings.confirmPassword) {
+      showError('New passwords do not match');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await profileAPI.changePassword({
+        currentPassword: settings.password,
+        newPassword: settings.newPassword,
+        confirmPassword: settings.confirmPassword
+      });
+      if (response.success) {
+        showSuccess('Password updated successfully');
+        setSettings((prev) => ({ ...prev, password: '', newPassword: '', confirmPassword: '' }));
+      }
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async (section) => {
     setLoading(true);
     try {
-      // TODO: Implement settings save API call
+      const payload = {
+        emailNotifications: settings.emailNotifications,
+        inAppNotifications: settings.inAppNotifications,
+        preferences: settings.preferences
+      };
+      await profileAPI.updateSettings(payload);
       showSuccess(`${section} settings saved successfully`);
     } catch (error) {
-      showError('Failed to save settings');
+      let errorMessage = 'Failed to save settings. Please try again.';
+      const errorData = error.response?.data?.message || '';
+      
+      if (errorData.includes('Cast to Object failed')) {
+        errorMessage = 'Some account data is in an incorrect format. Please refresh the page and try again.';
+      } else if (errorData.includes('billingInfo')) {
+        errorMessage = 'There was an issue saving your billing preferences. Please contact support if this persists.';
+      }
+
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -160,25 +218,6 @@ const SettingsPage = () => {
               </form>
             </div>
 
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold mb-4">Two-Factor Authentication</h3>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Enable 2FA</p>
-                  <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="twoFactorEnabled"
-                    checked={settings.twoFactorEnabled}
-                    onChange={handleChange}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#4881F8] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4881F8]"></div>
-                </label>
-              </div>
-            </div>
           </div>
         )}
 

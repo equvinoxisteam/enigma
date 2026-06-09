@@ -12,7 +12,9 @@ router.post('/single', protect, async (req, res) => {
     const fileType = req.query.type || 'image';
     let uploadMiddleware;
     
-    if (fileType === 'stl') {
+    // CAD files (stl, step, stp, etc.) use large upload
+    const cadTypes = ['stl', 'step', 'stp', 'iges', 'obj', 'cad', '3mf', 'dxf', 'dwg'];
+    if (cadTypes.includes(fileType)) {
       uploadMiddleware = uploadLarge.single('file');
     } else if (fileType === 'document') {
       uploadMiddleware = uploadDocument.single('file');
@@ -36,8 +38,8 @@ router.post('/single', protect, async (req, res) => {
       const finalFileType = req.body.type || req.query.type || fileType;
       let folder = req.query.folder || req.body.folder;
       if (!folder) {
-        if (finalFileType === 'stl') {
-          folder = 'stl-files';
+        if (cadTypes.includes(finalFileType)) {
+          folder = 'cad-files';
         } else if (finalFileType === 'document') {
           folder = 'documents';
         } else {

@@ -5,7 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { rfqAPI } from '../api/rfqAPI';
 import { uploadAPI } from '../api/uploadAPI';
 import STLViewer from '../components/STLViewer';
-import { ArrowLeft, ArrowRight, Upload, X, File, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload, X, File, FileText, Save, Box, Info, Sparkles, Shield, Zap, Globe } from 'lucide-react';
+import Button from '../components/ui/Button';
 
 const StartRFQPage = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const StartRFQPage = () => {
   const [activeTab, setActiveTab] = useState('workpieces');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -77,10 +79,18 @@ const StartRFQPage = () => {
     });
   };
 
+  const handleArrayChange = (field, value, checked) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: checked
+        ? [...prev[field], value]
+        : prev[field].filter(item => item !== value)
+    }));
+  };
+
   const handleFileUpload = async (file, type, workpieceIndex = 0) => {
     if (!file) return;
 
-    // Validate file size
     const maxSize = type === 'nda' ? 10 * 1024 * 1024 : type === 'main' ? 150 * 1024 * 1024 : 50 * 1024 * 1024;
     if (file.size > maxSize) {
       showError(`File size exceeds ${maxSize / (1024 * 1024)}MB limit`);
@@ -88,18 +98,20 @@ const StartRFQPage = () => {
     }
 
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', type === 'main' ? 'stl' : type === 'nda' ? 'document' : 'extra');
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', type === 'main' ? 'stl' : type === 'nda' ? 'document' : 'extra');
 
-      const response = await uploadAPI.uploadFile(formData);
+      const response = await uploadAPI.uploadFile(uploadFormData, (percent) => {
+        setUploadProgress(percent);
+      });
       const fileUrl = response.data?.url || response.url;
 
       if (type === 'main') {
         handleWorkpieceChange(workpieceIndex, 'mainFileUrl', fileUrl);
         handleWorkpieceChange(workpieceIndex, 'mainFile', file);
-        // TODO: Load STL file and calculate dimensions using Three.js
       } else if (type === 'nda') {
         setFormData(prev => ({ ...prev, ndaFileUrl: fileUrl, ndaFile: file }));
       } else {
@@ -110,9 +122,10 @@ const StartRFQPage = () => {
 
       showSuccess('File uploaded successfully');
     } catch (error) {
-      showError('Failed to upload file: ' + (error.response?.data?.message || error.message));
+      showError('Failed to upload file');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -129,72 +142,14 @@ const StartRFQPage = () => {
     }
   };
 
-  const handleArrayChange = (field, value, isChecked) => {
-    setFormData(prev => {
-      const current = prev[field] || [];
-      if (isChecked) {
-        return { ...prev, [field]: [...current, value] };
-      } else {
-        return { ...prev, [field]: current.filter(item => item !== value) };
-      }
-    });
-  };
-
-  const validateWorkpieces = () => {
-    for (const workpiece of formData.workpieces) {
-      if (!workpiece.title && !formData.title) {
-        showError('Please provide a title for the RFQ or workpiece');
-        return false;
-      }
-      if (!workpiece.mainFileUrl) {
-        showError('Please upload a main workpiece file');
-        return false;
-      }
-      if (!workpiece.technology) {
-        showError('Please select a technology');
-        return false;
-      }
-      if (!workpiece.material) {
-        showError('Please specify the material');
-        return false;
-      }
-      if (!workpiece.quantity || workpiece.quantity < 1) {
-        showError('Please specify quantity (minimum 1)');
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const validateRequirements = () => {
-    if (!formData.rfqDeadline) {
-      showError('Please specify RFQ deadline');
-      return false;
-    }
-    if (!formData.country) {
-      showError('Please specify country');
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (activeTab === 'workpieces' && !validateWorkpieces()) {
-      return;
-    }
-
-    if (activeTab === 'requirements' && !validateRequirements()) {
-      return;
-    }
 
     if (activeTab === 'workpieces') {
       setActiveTab('requirements');
       return;
     }
 
-    // Final submission
     setLoading(true);
     try {
       const payload = {
@@ -239,493 +194,273 @@ const StartRFQPage = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center text-gray-600 hover:text-[#4881F8] mb-4"
-        >
-          <ArrowLeft size={20} className="mr-2" />
-          Back to Dashboard
-        </button>
-        <h1 className="text-3xl font-bold mb-2">Start Your RFQ</h1>
-        <p className="text-gray-600">Create a new request for quotation</p>
+    <div className="max-w-5xl mx-auto py-10 px-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+        <div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-gray-400 hover:text-[#01364a] mb-4 font-black uppercase tracking-widest text-[10px]"
+          >
+            <ArrowLeft size={14} /> Back to Dashboard
+          </button>
+          <h1 className="text-5xl font-black text-[#01364a] tracking-tighter mb-2">Configure RFQ</h1>
+          <p className="text-gray-500 font-bold text-lg max-w-lg">Define your project requirements and technical specifications for sourcing.</p>
+        </div>
+        
+        <div className="flex items-center gap-4 bg-white border border-gray-100 p-4 rounded-[2rem] shadow-xl shadow-blue-900/5">
+           <div className="flex -space-x-4">
+             {[1,2,3].map(v => <div key={v} className="w-10 h-10 rounded-full border-4 border-white bg-blue-100 flex items-center justify-center text-[10px] font-black">{v}</div>)}
+           </div>
+           <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Global Sourcing Network Active</p>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8">
-          <button
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
+        <div className="lg:col-span-1 space-y-4">
+          <button 
             onClick={() => setActiveTab('workpieces')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'workpieces'
-                ? 'border-[#4881F8] text-[#4881F8]'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`w-full text-left p-6 rounded-[2rem] transition-all flex items-center justify-between group ${
+              activeTab === 'workpieces' ? 'bg-[#01364a] text-white shadow-2xl' : 'bg-white text-gray-400 border border-gray-100 hover:border-blue-100'
             }`}
           >
-            Workpieces
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Step 01</p>
+              <h3 className="font-black text-xl tracking-tight">Geometry</h3>
+            </div>
+            <Box size={20} className={activeTab === 'workpieces' ? 'text-blue-400' : ''} />
           </button>
-          <button
+          
+          <button 
             onClick={() => setActiveTab('requirements')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'requirements'
-                ? 'border-[#4881F8] text-[#4881F8]'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`w-full text-left p-6 rounded-[2rem] transition-all flex items-center justify-between group ${
+              activeTab === 'requirements' ? 'bg-[#01364a] text-white shadow-2xl' : 'bg-white text-gray-400 border border-gray-100 hover:border-blue-100'
             }`}
           >
-            Requirements
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Step 02</p>
+              <h3 className="font-black text-xl tracking-tight">Logistics</h3>
+            </div>
+            <Globe size={20} className={activeTab === 'requirements' ? 'text-blue-400' : ''} />
           </button>
-        </nav>
-      </div>
+        </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-6">
-        {/* Workpieces Tab */}
-        {activeTab === 'workpieces' && (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                RFQ Title *
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                placeholder="e.g., Precision CNC Machined Bracket"
-              />
-            </div>
-
-            {formData.workpieces.map((workpiece, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">Workpiece {index + 1}</h3>
-
-                {/* Main File Upload */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Main Workpiece File (STL) * (Max 150MB)
-                  </label>
-                  {workpiece.mainFileUrl ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex items-center">
-                          <File size={20} className="text-[#4881F8] mr-2" />
-                          <span className="text-sm">{workpiece.mainFile?.name || 'File uploaded'}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile('main', index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X size={20} />
-                        </button>
-                      </div>
-                      {/* STL Preview */}
-                      <div className="border border-gray-200 rounded-lg overflow-hidden">
-                        <STLViewer 
-                          fileUrl={workpiece.mainFileUrl} 
-                          height="400px"
-                          backgroundColor="#f9fafb"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#4881F8] transition-colors">
-                      <input
-                        type="file"
-                        accept=".stl,.STL"
-                        onChange={(e) => handleFileUpload(e.target.files[0], 'main', index)}
-                        className="hidden"
-                        id={`main-file-${index}`}
-                        disabled={uploading}
-                      />
-                      <label
-                        htmlFor={`main-file-${index}`}
-                        className="cursor-pointer flex flex-col items-center"
-                      >
-                        <Upload size={32} className="text-gray-400 mb-2" />
-                        <span className="text-sm text-gray-600">Click to upload or drag and drop</span>
-                        <span className="text-xs text-gray-500 mt-1">STL file (Max 150MB)</span>
+        <div className="lg:col-span-3">
+          <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-2xl shadow-blue-900/5 transition-all">
+            {activeTab === 'workpieces' && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="grid grid-cols-1 gap-6">
+                   <div>
+                      <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                        Project Identification <div className="cursor-help"><Info size={12} className="text-gray-200" /></div>
                       </label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleChange}
+                        placeholder="e.g. Batch #401 - Medical Housing Components"
+                        className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-[#4881F8] focus:bg-white rounded-2xl text-xl font-black outline-none transition-all shadow-inner"
+                      />
+                   </div>
+                </div>
+
+                {formData.workpieces.map((wp, index) => (
+                  <div key={index} className="space-y-8">
+                    <div className="relative group">
+                      <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                        Technical Model (STL/STEP) <div className="cursor-help" title="Upload CAD for AI analysis"><Info size={12} className="text-gray-200" /></div>
+                      </label>
+                      {wp.mainFileUrl ? (
+                         <div className="bg-gray-900 rounded-[2.5rem] overflow-hidden relative group/viewer">
+                            {wp.mainFileUrl.toLowerCase().endsWith('.stl') ? (
+                              <STLViewer fileUrl={wp.mainFileUrl} height="400px" />
+                            ) : (
+                              <div className="h-64 flex flex-col items-center justify-center text-white/50">
+                                <Box size={48} className="mb-4" />
+                                <p className="font-bold">CAD Model Attached</p>
+                              </div>
+                            )}
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveFile('main', index)}
+                              className="absolute top-6 right-6 p-4 bg-red-500 text-white rounded-2xl opacity-0 group-hover/viewer:opacity-100 transition-all shadow-xl"
+                            >
+                              <X size={20} />
+                            </button>
+                         </div>
+                      ) : (
+                        <div className="border-2 border-dashed border-gray-200 hover:border-[#4881F8] bg-gray-50 hover:bg-blue-50/50 rounded-[2.5rem] p-16 text-center transition-all cursor-pointer relative group/upload">
+                           <input
+                             type="file"
+                             accept=".stl,.step,.stp,.iges,.obj,.3mf,.dxf,.dwg,.pdf"
+                             onChange={(e) => handleFileUpload(e.target.files[0], 'main', index)}
+                             className="absolute inset-0 opacity-0 cursor-pointer"
+                           />
+                           <div className="flex flex-col items-center gap-4">
+                              <div className="w-20 h-20 bg-white rounded-[1.8rem] shadow-xl flex items-center justify-center text-blue-500 group-hover/upload:scale-110 transition-transform">
+                                {uploading ? <Loader2 size={32} className="animate-spin" /> : <Upload size={32} />}
+                              </div>
+                              <p className="text-xl font-black text-[#01364a]">Import Geometry</p>
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Supports STL, STEP, PARASOLID (MAX 150MB)</p>
+                           </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Dimensions */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Length (mm)</label>
-                    <input
-                      type="number"
-                      value={workpiece.dimensions.length}
-                      onChange={(e) => handleWorkpieceChange(index, 'dimensions.length', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    />
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                       {['length', 'width', 'height', 'diameter'].map(dim => (
+                         <div key={dim}>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">{dim} (mm)</label>
+                            <input
+                              type="number"
+                              value={wp.dimensions[dim]}
+                              onChange={(e) => handleWorkpieceChange(index, `dimensions.${dim}`, parseFloat(e.target.value) || 0)}
+                              className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-xl font-black text-center outline-none transition-all"
+                            />
+                         </div>
+                       ))}
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                       <div>
+                          <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                            Manufacturing Tech <div className="cursor-help"><Info size={12} className="text-gray-200" /></div>
+                          </label>
+                          <select
+                            value={wp.technology}
+                            onChange={(e) => handleWorkpieceChange(index, 'technology', e.target.value)}
+                            className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all appearance-none"
+                          >
+                             <option value="">Select Protocol</option>
+                             {technologyOptions.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                          </select>
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Material Grade</label>
+                          <input
+                            type="text"
+                            value={wp.material}
+                            onChange={(e) => handleWorkpieceChange(index, 'material', e.target.value)}
+                            placeholder="e.g. Al6061-T6 / SS304"
+                            className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all"
+                          />
+                       </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Width (mm)</label>
-                    <input
-                      type="number"
-                      value={workpiece.dimensions.width}
-                      onChange={(e) => handleWorkpieceChange(index, 'dimensions.width', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Height (mm)</label>
-                    <input
-                      type="number"
-                      value={workpiece.dimensions.height}
-                      onChange={(e) => handleWorkpieceChange(index, 'dimensions.height', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Diameter (mm)</label>
-                    <input
-                      type="number"
-                      value={workpiece.dimensions.diameter}
-                      onChange={(e) => handleWorkpieceChange(index, 'dimensions.diameter', parseFloat(e.target.value) || 0)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {/* Part Type */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Part Type</label>
-                  <input
-                    type="text"
-                    value={workpiece.partType}
-                    onChange={(e) => handleWorkpieceChange(index, 'partType', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    placeholder="e.g., Gear, Pipe, Bracket, Housing"
-                  />
-                </div>
-
-                {/* Technology & Material */}
-                <div className="grid md:grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Technology *</label>
-                    <select
-                      value={workpiece.technology}
-                      onChange={(e) => handleWorkpieceChange(index, 'technology', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select technology</option>
-                      {technologyOptions.map(tech => (
-                        <option key={tech} value={tech}>{tech.replace('_', ' ')}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Material *</label>
-                    <input
-                      type="text"
-                      value={workpiece.material}
-                      onChange={(e) => handleWorkpieceChange(index, 'material', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                      placeholder="e.g., Aluminum 6061, Steel, Plastic"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Quantity */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={workpiece.quantity}
-                    onChange={(e) => handleWorkpieceChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                {/* Extra Files */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Extra Files (Optional, Max 50MB each)
-                  </label>
-                  <div className="space-y-2">
-                    {workpiece.extraFiles.map((file, fileIndex) => (
-                      <div key={fileIndex} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <span className="text-sm">{file}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile('extra', index, fileIndex)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
-                    <input
-                      type="file"
-                      onChange={(e) => handleFileUpload(e.target.files[0], 'extra', index)}
-                      className="text-sm"
-                      disabled={uploading}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* NDA File */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                NDA File (Optional, Max 10MB)
-              </label>
-              {formData.ndaFileUrl ? (
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <File size={20} className="text-[#4881F8] mr-2" />
-                    <span className="text-sm">{formData.ndaFile?.name || 'NDA uploaded'}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFile('nda')}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-              ) : (
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => handleFileUpload(e.target.files[0], 'nda')}
-                  className="text-sm"
-                  disabled={uploading}
-                />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Requirements Tab */}
-        {activeTab === 'requirements' && (
-          <div className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Quote Currency *
-                </label>
-                <select
-                  name="preferredCurrency"
-                  value={formData.preferredCurrency}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                >
-                  {currencyOptions.map(currency => (
-                    <option key={currency} value={currency}>{currency}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Shipping Terms (Incoterms) *
-                </label>
-                <select
-                  name="shippingTerms"
-                  value={formData.shippingTerms}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                >
-                  {incotermsOptions.map(term => (
-                    <option key={term} value={term}>{term}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  RFQ Deadline *
-                </label>
-                <input
-                  type="datetime-local"
-                  name="rfqDeadline"
-                  value={formData.rfqDeadline}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Acceptance Deadline
-                </label>
-                <input
-                  type="datetime-local"
-                  name="acceptanceDeadline"
-                  value={formData.acceptanceDeadline}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Target Delivery Date
-                </label>
-                <input
-                  type="date"
-                  name="targetDeliveryDate"
-                  value={formData.targetDeliveryDate}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Part Tracking ID
-                </label>
-                <input
-                  type="text"
-                  name="partTrackingId"
-                  value={formData.partTrackingId}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Region
-                </label>
-                <input
-                  type="text"
-                  name="region"
-                  value={formData.region}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., DACH, EU, APAC"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Communication Language
-              </label>
-              <input
-                type="text"
-                name="communicationLanguage"
-                value={formData.communicationLanguage}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Required Certificates
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {certificationOptions.map((cert) => (
-                  <label key={cert} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.requiredCertificates.includes(cert)}
-                      onChange={(e) => handleArrayChange('requiredCertificates', cert, e.target.checked)}
-                      className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                    />
-                    <span className="text-sm text-gray-700">{cert.replace('_', ' ')}</span>
-                  </label>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Request Justification
-              </label>
-              <textarea
-                name="requestJustification"
-                value={formData.requestJustification}
-                onChange={handleChange}
-                rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                placeholder="Explain the purpose and requirements of this RFQ..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes
-              </label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                placeholder="Additional notes or special requirements..."
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Navigation Buttons */}
-        <div className="mt-8 pt-6 border-t border-gray-200 flex justify-between">
-          {activeTab === 'requirements' && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('workpieces')}
-              className="flex items-center px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <ArrowLeft size={18} className="mr-2" />
-              Back
-            </button>
-          )}
-          <div className="ml-auto">
-            {activeTab === 'workpieces' ? (
-              <button
-                type="submit"
-                className="flex items-center px-6 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] transition-colors"
-              >
-                Next
-                <ArrowRight size={18} className="ml-2" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading || uploading}
-                className="flex items-center px-6 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save size={18} className="mr-2" />
-                {loading ? 'Submitting...' : 'Submit RFQ'}
-              </button>
             )}
-          </div>
+
+            {activeTab === 'requirements' && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                 <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Currency Preference</label>
+                        <select
+                          name="preferredCurrency"
+                           value={formData.preferredCurrency}
+                           onChange={handleChange}
+                          className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all appearance-none"
+                        >
+                           {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Incoterms</label>
+                        <select
+                          name="shippingTerms"
+                           value={formData.shippingTerms}
+                           onChange={handleChange}
+                          className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all appearance-none"
+                        >
+                           {incotermsOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                 </div>
+
+                 <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">RFQ Expiry</label>
+                        <input
+                          type="datetime-local"
+                          name="rfqDeadline"
+                          value={formData.rfqDeadline}
+                          onChange={handleChange}
+                          className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Target Delivery</label>
+                        <input
+                          type="date"
+                          name="targetDeliveryDate"
+                          value={formData.targetDeliveryDate}
+                          onChange={handleChange}
+                          className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all"
+                        />
+                    </div>
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Compliance Certificates</label>
+                    <div className="flex flex-wrap gap-3">
+                       {certificationOptions.map(cert => (
+                         <button
+                           key={cert}
+                           type="button"
+                           onClick={() => handleArrayChange('requiredCertificates', cert, !formData.requiredCertificates.includes(cert))}
+                           className={`px-6 py-4 rounded-2xl font-black text-xs transition-all border-2 ${
+                             formData.requiredCertificates.includes(cert) ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-500/20' : 'bg-white border-gray-100 text-gray-400 hover:border-blue-200'
+                           }`}
+                         >
+                           {cert}
+                         </button>
+                       ))}
+                    </div>
+                 </div>
+              </div>
+            )}
+
+            <div className="mt-12 pt-10 border-t border-gray-50 flex justify-between items-center">
+               <div className="flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                  <Shield size={14} /> Encrypted Transmission
+               </div>
+               
+               <div className="flex gap-4">
+                 {activeTab === 'requirements' && (
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab('workpieces')}
+                      className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm hover:bg-gray-200 transition-all"
+                    >
+                      Step 01
+                    </button>
+                 )}
+                 
+                 <button 
+                  type="submit"
+                  disabled={loading || uploading}
+                  className="px-10 py-5 bg-[#01364a] text-white rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-black transition-all shadow-2xl shadow-blue-900/10"
+                 >
+                   {activeTab === 'workpieces' ? (
+                      <>Next Protocol <ArrowRight size={18} /></>
+                   ) : (
+                      <>{loading ? 'Initializing Build...' : 'Publish RFQ to Pool'} <Sparkles size={18} /></>
+                   )}
+                 </button>
+               </div>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 };
 
-export default StartRFQPage;
+const Loader2 = ({ size, className }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+  </svg>
+);
 
+export default StartRFQPage;

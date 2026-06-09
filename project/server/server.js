@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 // const { initializeAdmin } = require('./middlewares/admin'); // Admin not needed for now
 const authRoutes = require('./routes/authRoutes');
@@ -29,23 +30,32 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // CORS configuration for both environments
+const envOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
+      ...envOrigins,
+      process.env.FRONTEND_URL,
+      process.env.CLIENT_URL,
       // Development URLs
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174',
-      'http://127.0.0.1:3000',
-      // Production URL (update with your actual domain)
-      'https://reeown.com',
-      'https://www.reeown.com',
-    ];
+      ...(isDevelopment ? [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:4173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:4173',
+        'http://127.0.0.1:3000',
+      ] : []),
+    ].filter(Boolean);
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -100,16 +110,55 @@ if (isDevelopment) {
   });
 }
 
+// Proxy CloudFront files to avoid CORS issues in development
+if (isDevelopment) {
+  const { createProxyMiddleware } = require('http-proxy-middleware');
+  
+  // Proxy all enigma/* paths through CloudFront
+  app.use('/enigma', createProxyMiddleware({
+    target: process.env.AWS_CLOUDFRONT_DOMAIN || 'https://d3l60mdhyx2j2v.cloudfront.net',
+    changeOrigin: true,
+    pathRewrite: {
+      '^/enigma': '/enigma'
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+      proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
+      proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type';
+    }
+  }));
+}
+
 // Routes - Enigma API
 app.use('/api/auth', authRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api/rfqs', require('./routes/rfqRoutes'));
 app.use('/api/invitations', require('./routes/invitationRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/users', userRoutes);
 app.use('/api/search', require('./routes/searchRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/profile', require('./routes/profileRoutes'));
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/collections', collectionRoutes);
+app.use('/api/sell', sellRoutes);
+app.use('/api/repair', repairRoutes);
+app.use('/api/recycle', recycleRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/stock-notifications', stockNotificationRoutes);
+app.use('/api/otp', otpRoutes);
+app.use('/api/business', businessRoutes);
+app.use('/api/seller', sellerRoutes);
 // Keep upload route for file uploads
+app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/upload', uploadRoutes); 
+
+// Fallback to local uploads rendering
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check route with environment info
 app.get('/api/health', (req, res) => {

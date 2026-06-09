@@ -37,27 +37,38 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
+      console.log('🔐 Login attempt started with:', credentials.email);
       dispatch(clearError());
       const result = await dispatch(loginUser(credentials));
       
       if (loginUser.fulfilled.match(result)) {
-        // User data is already stored in localStorage by authAPI.login
-        // Refresh user data from server to ensure consistency
-        try {
-          await dispatch(getMe());
-        } catch (err) {
-          console.error('Error refreshing user data after login:', err);
+        console.log('✅ Login successful, payload received:', result.payload);
+        // Ensure token and user data are stored in localStorage
+        if (result.payload.token) {
+          localStorage.setItem('token', result.payload.token);
+          localStorage.setItem('user', JSON.stringify(result.payload));
+          console.log('💾 Token and user saved to localStorage');
+          console.log('🔑 Token value:', result.payload.token.substring(0, 20) + '...');
+          
+          // Update Redux store directly with login response
+          // This prevents the need for an immediate getMe() call
+          return { success: true, user: result.payload };
+        } else {
+          console.error('❌ No token in login response!');
+          return { success: false, error: 'No token received' };
         }
-        return { success: true, user: result.payload };
       } else if (loginUser.rejected.match(result)) {
+        console.error('❌ Login rejected:', result.payload?.message);
         return { 
           success: false, 
           error: result.payload?.message || 'Login failed' 
         };
       }
       
+      console.warn('⚠️ Unexpected login result');
       return { success: false, error: 'Login failed' };
     } catch (error) {
+      console.error('💥 Unexpected login error:', error);
       return { success: false, error: 'An unexpected error occurred' };
     }
   };
@@ -103,7 +114,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.isAdmin === true;
 
   const value = {
     user,

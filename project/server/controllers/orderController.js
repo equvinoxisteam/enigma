@@ -5,6 +5,7 @@ const razorpay = require('../config/razorpay');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const emailService = require('../emailService/EmailService');
+const { PLAN_TYPES } = require('../config/planFeatures');
 
 // @desc    Create Razorpay order
 // @route   POST /api/orders/create-razorpay-order
@@ -362,6 +363,72 @@ const order = new Order({
       error: error.message,
       type: 'ORDER_PROCESSING_ERROR'
     });
+  }
+};
+
+// @desc    Verify subscription payment
+// @route   POST /api/orders/verify-subscription
+const verifySubscription = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planName, amount } = req.body;
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Incomplete payment details' });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Payment verification failed - Invalid signature' });
+    }
+
+    const normalizedPlanName = String(planName || '').trim().toUpperCase();
+    const planNameMap = {
+      STANDARD: PLAN_TYPES.STANDARD,
+      PRO: PLAN_TYPES.PRO,
+      ENTERPRISE: PLAN_TYPES.ENTERPRISE
+    };
+
+    const planType = planNameMap[normalizedPlanName];
+    if (!planType) {
+      return res.status(400).json({ message: 'Invalid subscription plan' });
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          'subscription.planType': planType,
+          'subscription.status': 'ACTIVE',
+          'subscription.amountPaid': Number(amount || 0) / 100,
+          'subscription.billingCycle': 'YEARLY',
+          'subscription.startsAt': now,
+          'subscription.expiresAt': expiresAt,
+          'subscription.lastPaymentId': razorpay_payment_id,
+          'subscription.lastOrderId': razorpay_order_id
+        }
+      },
+      { new: true }
+    ).select('userType subscription');
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription successfully verified',
+      data: {
+        userType: updatedUser?.userType,
+        subscription: updatedUser?.subscription
+      }
+    });
+  } catch (error) {
+    console.error('Subscription Verification Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -741,5 +808,6 @@ module.exports = {
   getMyOrders,
   updateOrderToPaid,
   getOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  verifySubscription
 };

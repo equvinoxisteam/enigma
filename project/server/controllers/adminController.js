@@ -1,76 +1,114 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
-const Product = require('../models/Product');
-const Order = require('../models/Order');
+const UpgradeRequest = require('../models/UpgradeRequest');
 
-// @desc    Get dashboard stats
-// @route   GET /api/admin/dashboard
-const getDashboardStats = async (req, res) => {
+// @desc    Get all users for admin
+// @route   GET /api/admin/users
+const getUsers = async (req, res) => {
   try {
-    // Get the start and end of the current month
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-    const [
-      totalProducts,
-      totalOrders,
-      totalUsers,
-      processingOrders,
-      deliveredOrders,
-      totalRevenueResult,
-      monthlyRevenueResult, // New calculation for monthly revenue
-      recentOrders,
-    ] = await Promise.all([
-      Product.countDocuments(),
-      Order.countDocuments(),
-      User.countDocuments({ role: 'user' }),
-      Order.countDocuments({ orderStatus: 'processing' }),
-      Order.countDocuments({ orderStatus: 'delivered' }),
-      Order.aggregate([{ $group: { _id: null, total: { $sum: '$total' } } }]),
-      // FIX: Calculate revenue only for orders within the current month
-      Order.aggregate([
-        { $match: { createdAt: { $gte: startOfMonth, $lte: endOfMonth } } },
-        { $group: { _id: null, total: { $sum: '$total' } } }
-      ]),
-      Order.find()
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate('user', 'name email') 
-        .populate('items.product', 'name'),
-    ]);
-    
-    const totalRevenue = totalRevenueResult[0]?.total || 0;
-    const monthlyRevenue = monthlyRevenueResult[0]?.total || 0; // Get monthly revenue
-
-    res.json({
-      totalProducts,
-      totalOrders,
-      totalUsers,
-      processingOrders,
-      deliveredOrders,
-      totalRevenue,
-      monthlyRevenue, // Send monthly revenue in the response
-      recentOrders,
-    });
+    const users = await User.find({ isAdmin: { $ne: true } }).select('-password').sort({ createdAt: -1 });
+    res.json(users);
   } catch (error) {
-    console.error('Dashboard stats error:', error);
+    console.error('getUsers error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Get all users
-// @route   GET /api/admin/users
-const getUsers = async (req, res) => {
+// @desc    Get dashboard stats
+// @route   GET /api/admin/stats
+const getStats = async (req, res) => {
   try {
-    const users = await User.find({ role: 'user' }).select('-password');
-    res.json(users);
-  } catch (error)
- {
+    const totalUsers = await User.countDocuments({ isAdmin: { $ne: true } });
+    const totalManufacturers = await User.countDocuments({ userType: 'MANUFACTURER' });
+    const totalBuyers = await User.countDocuments({ userType: 'BUYER' });
+    const totalHybrid = await User.countDocuments({ userType: 'HYBRID' });
+    const pendingUpgradeRequests = await UpgradeRequest.countDocuments({ status: 'PENDING' });
+
+    res.json({
+      totalUsers,
+      totalManufacturers,
+      totalBuyers,
+      totalHybrid,
+      pendingUpgradeRequests
+    });
+  } catch (error) {
+    console.error('getStats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Update user access/plan
+// @route   PUT /api/admin/users/:id/upgrade
+const upgradeUser = async (req, res) => {
+  try {
+    const { planType, userType, manufacturerStatus } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (planType) {
+      user.subscription.planType = planType;
+      user.subscription.status = 'ACTIVE';
+      user.subscription.startsAt = new Date();
+      user.subscription.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+    }
+
+    if (userType) {
+      user.userType = userType;
+    }
+
+    if (manufacturerStatus) {
+      user.manufacturerStatus = manufacturerStatus;
+      if (manufacturerStatus === 'ACTIVE') {
+        user.status = 'ACTIVE';
+      }
+    }
+
+    if (req.body.isVerified !== undefined) {
+      user.manufacturerSettings.isVerified = req.body.isVerified;
+    }
+
+    await user.save();
+
+    // Close any pending upgrade requests for this user/plan
+    await UpgradeRequest.updateMany(
+      { user: user._id, status: 'PENDING' },
+      { status: 'APPROVED', processedAt: new Date() }
+    );
+
+    res.json({ message: 'User upgraded successfully', user });
+  } catch (error) {
+    console.error('upgradeUser error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Update user status (Suspend/Activate)
+// @route   PUT /api/admin/users/:id/status
+const updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.status = status;
+    await user.save();
+
+    res.json({ message: 'User status updated successfully', user });
+  } catch (error) {
+    console.error('updateStatus error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 module.exports = {
-  getDashboardStats,
-  getUsers
+  getUsers,
+  getStats,
+  upgradeUser,
+  updateStatus
 };

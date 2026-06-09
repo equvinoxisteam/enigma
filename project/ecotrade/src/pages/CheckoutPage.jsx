@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { orderAPI } from '../api/orderAPI';
 import { initiateRazorpayPayment } from '../lib/razorpay';
 import Button from '../components/ui/Button';
+import { countries } from '../data/countries';
 
 const CheckoutPage = () => {
   const { cart, clearCart } = useCart();
@@ -13,14 +14,14 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
 
   const [shippingAddress, setShippingAddress] = useState({
-    fullName: user?.name || '',
+    fullName: user?.fullName || '',
     email: user?.email || '',
     phone: user?.phoneNumber || '',
     address: user?.address || '',
     city: user?.city || '', 
     state: user?.state || '',
-    pincode: user?.pincode || '',
-    country: 'India',
+    pincode: user?.zipCode || '',
+    country: user?.country || 'India',
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -35,14 +36,14 @@ const CheckoutPage = () => {
     if (user) {
       setShippingAddress((prev) => ({
         ...prev,
-        fullName: user.name || '',
+        fullName: user.fullName || '',
         email: user.email || '',
         phone: user.phoneNumber || '',
         address: user.address || '',
         city: user.city || '',
         state: user.state || '',
-        pincode: user.pincode || '',
-        country: 'India',
+        pincode: user.zipCode || '',
+        country: user.country || 'India',
       }));
     }
   }, [user]);
@@ -78,9 +79,9 @@ const CheckoutPage = () => {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    const phoneRegex = /^[6-9]\d{9}$/;
+    const phoneRegex = /^\d{7,15}$/;
     if (shippingAddress.phone && !phoneRegex.test(shippingAddress.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
+      newErrors.phone = 'Please enter a valid phone number';
     }
 
     const pincodeRegex = /^[1-9][0-9]{5}$/;
@@ -408,6 +409,21 @@ const CheckoutPage = () => {
                     {errors.state && (
                       <p className="text-red-500 text-sm mt-1">{errors.state}</p>
                     )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Country *
+                    </label>
+                    <select
+                      name="country"
+                      value={shippingAddress.country}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {countries.map(c => (
+                        <option key={c.name} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

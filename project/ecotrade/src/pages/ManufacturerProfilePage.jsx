@@ -1,0 +1,280 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
+import { ArrowLeft, MapPin, Star, Shield, Factory, CheckCircle, Mail, Settings, Zap, Play, ExternalLink, Globe, Award, Lock } from 'lucide-react';
+import { profileAPI } from '../api/profileAPI';
+import { hasFeature, FEATURE_KEYS, PLAN_TYPES, getEffectivePlanType } from '../config/planFeatures';
+
+const ManufacturerProfilePage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { showError } = useToast();
+  const [manufacturer, setManufacturer] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await profileAPI.getPublicManufacturerProfile(id);
+        const profile = response?.data || {};
+        
+        // Check if anonymization is needed (Free plan)
+        const planType = getEffectivePlanType(profile);
+        const isFree = planType === PLAN_TYPES.FREE;
+
+        setManufacturer({
+          ...profile,
+          planType,
+          isFree,
+          // Anonymization logic
+          displayName: isFree ? 'Enigma Manufacturer' : (profile.companyName || 'Anonymous Manufacturer'),
+          displayLogo: isFree ? null : profile.companyLogo,
+          displayBanner: isFree ? null : profile.companyBanner,
+          displayDescription: isFree ? 'This manufacturer is part of the Enigma network. To view full credentials and identity, please contact them through an RFQ.' : (profile.description || 'No description provided.'),
+          
+          rating: profile?.manufacturerSettings?.rating || 0,
+          reviewCount: profile?.manufacturerSettings?.reviewCount || 0,
+          completedRFQs: profile?.manufacturerSettings?.completedProjects || 0,
+          materials: profile?.manufacturerSettings?.materials || [],
+          machinery: profile?.manufacturerSettings?.machinery || [],
+          manufacturingTypes: profile?.manufacturerSettings?.technologies || []
+        });
+      } catch (error) {
+        showError('Failed to load manufacturer profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [id, showError]);
+
+  if (loading) return (
+    <div className="max-w-6xl mx-auto p-12 space-y-8 animate-pulse">
+      <div className="h-64 bg-gray-100 rounded-[3rem]"></div>
+      <div className="h-20 bg-gray-50 rounded-2xl w-1/2"></div>
+    </div>
+  );
+
+  if (!manufacturer) return (
+    <div className="max-w-4xl mx-auto text-center py-20 bg-gray-50 rounded-[3rem] mt-10">
+      <h2 className="text-3xl font-black text-[#01364a] mb-4">Manufacturer Not Found</h2>
+      <button onClick={() => navigate(-1)} className="px-8 py-3 bg-[#4881F8] text-white rounded-2xl font-bold">Return to Pool</button>
+    </div>
+  );
+
+  const isVerified = hasFeature(manufacturer, FEATURE_KEYS.VERIFIED_BADGE) || manufacturer.manufacturerSettings?.isVerified;
+  const showCapacity = hasFeature(manufacturer, FEATURE_KEYS.CAPACITY_DISPLAY);
+  const showVideo = hasFeature(manufacturer, FEATURE_KEYS.VIDEO_SLIDES);
+
+  return (
+    <div className="max-w-6xl mx-auto pb-20 px-4 pt-10">
+      <button 
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-400 hover:text-[#01364a] mb-10 transition-all font-black uppercase tracking-widest text-xs"
+      >
+        <ArrowLeft size={16} />
+        Back to Research
+      </button>
+
+      {/* Hero Section */}
+      <div className="relative mb-12 group">
+        <div className={`h-64 rounded-[3.5rem] overflow-hidden shadow-2xl transition-all duration-700 ${!manufacturer.displayBanner ? 'bg-gradient-to-br from-[#01364a] via-[#044c66] to-[#4881F8]' : ''}`}>
+          {manufacturer.displayBanner ? (
+            <img src={manufacturer.displayBanner} alt="Banner" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          ) : (
+             <div className="w-full h-full flex items-center justify-center opacity-10">
+                <Globe size={300} className="text-white" />
+             </div>
+          )}
+        </div>
+
+        <div className="absolute -bottom-16 left-12 flex items-end gap-8">
+           <div className="w-44 h-44 bg-white p-4 rounded-[2.5rem] shadow-2xl border border-gray-100 relative group/logo overflow-hidden">
+             <div className="w-full h-full bg-blue-50 rounded-[2rem] flex items-center justify-center overflow-hidden">
+                {manufacturer.displayLogo ? (
+                  <img src={manufacturer.displayLogo} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-[#01364a] transition-all">
+                    {manufacturer.isFree ? <Lock size={48} className="opacity-20" /> : <Factory size={48} />}
+                  </div>
+                )}
+             </div>
+             {manufacturer.isFree && (
+               <div className="absolute inset-0 bg-blue-600/10 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity">
+                 <Lock size={20} className="text-blue-600" />
+               </div>
+             )}
+           </div>
+
+           <div className="pb-4">
+              <div className="flex items-center gap-4 mb-3">
+                <h1 className="text-5xl font-black text-[#01364a] tracking-tighter leading-none">{manufacturer.displayName}</h1>
+                {isVerified && (
+                  <div className="bg-[#4881F8] text-white p-2 rounded-2xl shadow-xl shadow-blue-500/30 border-4 border-white" title="Verified Professional">
+                    <Shield size={24} className="fill-current" />
+                  </div>
+                )}
+                {manufacturer.isFree && (
+                   <span className="bg-gray-100 text-gray-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-200">
+                     Free Tier Account
+                   </span>
+                )}
+              </div>
+              <div className="flex items-center gap-6 text-sm font-bold text-gray-500">
+                <div className="flex items-center gap-2"><MapPin size={18} className="text-[#4881F8]" /> {manufacturer.country}</div>
+                {showCapacity && (
+                  <div className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border animate-pulse ${
+                    manufacturer.manufacturerSettings?.capacityStatus === 'FULL' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                  }`}>
+                    <Zap size={14} className="fill-current" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {manufacturer.manufacturerSettings?.capacityStatus || 'OPEN'} Capacity
+                    </span>
+                  </div>
+                )}
+              </div>
+           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-24">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-10">
+          <section className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-2xl shadow-blue-900/5">
+            <h2 className="text-2xl font-black text-[#01364a] mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><ArrowRight size={20} /></div>
+              Industrial Profile
+            </h2>
+            <p className="text-lg text-gray-600 font-bold leading-relaxed mb-10">{manufacturer.displayDescription}</p>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              <div className="bg-gray-50 rounded-[1.8rem] p-6 text-center">
+                 <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Company Size</p>
+                 <p className="text-2xl font-black text-[#01364a]">{manufacturer.companySize || '0-50'}</p>
+              </div>
+              <div className="bg-gray-50 rounded-[1.8rem] p-6 text-center text-[#4881F8]">
+                 <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Success Rate</p>
+                 <p className="text-2xl font-black">{manufacturer.rating > 0 ? `${(manufacturer.rating * 20).toFixed(0)}%` : '98%'}</p>
+              </div>
+              <div className="bg-gray-50 rounded-[1.8rem] p-6 text-center text-emerald-600">
+                 <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Completed</p>
+                 <p className="text-2xl font-black">{manufacturer.completedRFQs}+ RFQs</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-2xl shadow-blue-900/5">
+             <h2 className="text-2xl font-black text-[#01364a] mb-8">Technical Proficiency</h2>
+             
+             <div className="mb-8">
+               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Core Technologies</h3>
+               <div className="flex flex-wrap gap-3">
+                 {manufacturer.manufacturingTypes.map((tech, i) => (
+                   <span key={i} className="px-6 py-3 bg-blue-50 text-[#01364a] font-black rounded-2xl text-sm border border-blue-100 hover:scale-105 transition-transform">
+                     {tech.replace('_', ' ')}
+                   </span>
+                 ))}
+               </div>
+             </div>
+
+             <div className="mb-8">
+               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Materials Expertise</h3>
+               <div className="flex flex-wrap gap-2">
+                 {manufacturer.materials.map((mat, i) => (
+                   <span key={i} className="px-4 py-2 bg-gray-50 text-gray-600 font-bold rounded-xl text-sm border border-gray-100">
+                     {mat}
+                   </span>
+                 ))}
+               </div>
+             </div>
+
+             <div>
+               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <Settings size={16} /> Production Machinery
+               </h3>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 {manufacturer.machinery.map((mach, i) => (
+                   <div key={i} className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl font-bold text-[#01364a]">
+                     <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                     {mach}
+                   </div>
+                 ))}
+               </div>
+             </div>
+          </section>
+
+          {showVideo && manufacturer.manufacturerSettings?.videoSlides?.length > 0 && (
+             <section className="bg-[#01364a] rounded-[3rem] p-10 shadow-2xl overflow-hidden relative text-white">
+                <div className="relative z-10">
+                   <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
+                     <Play size={24} className="fill-current text-blue-400" />
+                     Factory Showcase
+                   </h2>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                     {manufacturer.manufacturerSettings.videoSlides.map((v, i) => (
+                       <div key={i} className="group relative aspect-video rounded-3xl overflow-hidden bg-white/5 border border-white/10">
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/60 transition-all cursor-pointer">
+                             <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform">
+                                <Play size={28} className="fill-white" />
+                             </div>
+                          </div>
+                          <div className="absolute bottom-0 p-6">
+                             <p className="font-black text-lg">{v.title || 'Production Facility'}</p>
+                          </div>
+                       </div>
+                     ))}
+                   </div>
+                </div>
+                <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
+                  <Factory size={200} />
+                </div>
+             </section>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-8">
+           <section className="bg-white border border-gray-100 rounded-[3rem] p-8 shadow-2xl shadow-blue-900/5">
+              <h2 className="text-xl font-black text-[#01364a] mb-6 flex items-center gap-2">
+                <Award size={20} className="text-[#4881F8]" />
+                Compliance
+              </h2>
+              <div className="space-y-4">
+                {(manufacturer.manufacturerSettings?.certifications || []).map((c, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                    <Shield size={20} className="text-emerald-500 fill-emerald-500/10" />
+                    <span className="font-black text-emerald-800 text-sm tracking-tight">{c.replace('_', ' ')}</span>
+                  </div>
+                ))}
+                {(manufacturer.manufacturerSettings?.certifications || []).length === 0 && (
+                  <p className="text-center py-6 text-gray-400 font-bold italic">No public certs listed</p>
+                )}
+              </div>
+           </section>
+
+           <div className="bg-[#4881F8] rounded-[3rem] p-10 text-white shadow-2xl shadow-blue-500/20 relative overflow-hidden group">
+              <div className="relative z-10">
+                 <h2 className="text-2xl font-black mb-4">Request Match</h2>
+                 <p className="text-blue-50 font-bold text-sm leading-relaxed mb-8 opacity-90">
+                    Start a conversation with this manufacturer to discuss project timelines and technical feasibility.
+                 </p>
+                 <button className="w-full py-5 bg-white text-[#4881F8] rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-xl">
+                   <MessageSquare size={18} /> Send Message
+                 </button>
+              </div>
+              <Sparkles className="absolute right-[-10px] top-[-10px] opacity-20" size={100} />
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MessageSquare = ({ size, className }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  </svg>
+);
+
+export default ManufacturerProfilePage;

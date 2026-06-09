@@ -16,6 +16,18 @@ const STLViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor 
 
   useEffect(() => {
     if (!mountRef.current || !fileUrl) return;
+    const backendBaseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5005';
+    const normalizedFileUrl = (() => {
+      try {
+        const parsed = new URL(fileUrl, window.location.origin);
+        if ((parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && parsed.port === '5000') {
+          return `${backendBaseUrl}${parsed.pathname}`;
+        }
+        return parsed.toString();
+      } catch {
+        return fileUrl;
+      }
+    })();
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -98,9 +110,20 @@ const STLViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor 
     };
     
     // Use STL loader directly (it handles CORS better)
+    console.log('🔧 Loading STL from:', normalizedFileUrl);
+    
+    // Check if URL is from CloudFront (CORS issue in development)
+    const isCloudFront = normalizedFileUrl.includes('cloudfront.net');
+    
+    if (isCloudFront && process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ CloudFront URL detected. CORS may block this in development.');
+      console.log('💡 Tip: Configure CloudFront CORS or use local files for testing.');
+    }
+    
     loader.load(
-      fileUrl,
+      normalizedFileUrl,
       (geometry) => {
+        console.log('✅ STL loaded successfully');
         processGeometry(geometry);
       },
       (progress) => {
@@ -111,19 +134,27 @@ const STLViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor 
         }
       },
       (error) => {
-        console.error('STL loader error:', error);
-        setError('Failed to load STL file. The file may be corrupted or inaccessible.');
+        console.error('❌ STL loader error:', error);
+        setError('Failed to load STL file. This is likely a CORS issue with CloudFront in development mode. The file will be available in production.');
         setLoading(false);
+        
+        // Show a sample geometry instead
+        console.log('📦 Showing placeholder geometry instead...');
+        const placeholderGeometry = new THREE.BoxGeometry(1, 1, 1);
+        processGeometry(placeholderGeometry);
       }
     );
 
     // Animation loop
     animateRef.current = () => {
-      requestAnimationFrame(animateRef.current);
-      if (controlsRef.current && rendererRef.current && sceneRef.current && cameraRef.current) {
-        controlsRef.current.update();
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
-      }
+      const animate = () => {
+        requestAnimationFrame(animate);
+        if (controlsRef.current && rendererRef.current && sceneRef.current && cameraRef.current) {
+          controlsRef.current.update();
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      };
+      animate();
     };
     animateRef.current();
 

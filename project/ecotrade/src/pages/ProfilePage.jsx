@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { profileAPI } from '../api/profileAPI';
+import { uploadAPI } from '../api/uploadAPI';
 import { useToast } from '../contexts/ToastContext';
 import { Building2, ShoppingCart, Factory, Save } from 'lucide-react';
+import { countries } from '../data/countries';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -10,9 +12,26 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('company');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
     companyName: '',
     website: '',
+    companyLogo: '',
+    companyBanner: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+    companySize: '',
+    gstNumber: '',
     industryVertical: '',
+    manufacturingTypes: [],
+    yearsInBusiness: 0,
+    annualSpending: '',
+    procurementTeamSize: '',
+    preferredLeadTime: '',
     buyerSettings: {
       defaultCountry: '',
       defaultRegion: '',
@@ -44,19 +63,86 @@ const ProfilePage = () => {
   const isManufacturer = userType === 'MANUFACTURER' || userType === 'HYBRID';
 
   useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await profileAPI.get();
+        const profile = response?.data || user;
+        if (!profile) return;
+        setFormData({
+          fullName: profile.fullName || '',
+          email: profile.email || '',
+          phoneNumber: profile.phoneNumber || '',
+          companyName: profile.companyName || '',
+          website: profile.website || '',
+          companyLogo: profile.companyLogo || '',
+          companyBanner: profile.companyBanner || '',
+          address: profile.address || '',
+          city: profile.city || '',
+          state: profile.state || '',
+          zipCode: profile.zipCode || '',
+          country: profile.country || '',
+          companySize: profile.companySize || '',
+          gstNumber: profile.gstNumber || '',
+          manufacturingTypes: profile.manufacturingTypes || [],
+          yearsInBusiness: profile.yearsInBusiness || 0,
+          annualSpending: profile.annualSpending || '',
+          procurementTeamSize: profile.procurementTeamSize || '',
+          preferredLeadTime: profile.preferredLeadTime || '',
+          buyerSettings: {
+            defaultCountry: profile.buyerSettings?.defaultCountry || '',
+            defaultRegion: profile.buyerSettings?.defaultRegion || '',
+            preferredCurrency: profile.buyerSettings?.preferredCurrency || 'USD',
+            defaultIncoterms: profile.buyerSettings?.defaultIncoterms || 'FOB',
+            communicationLanguage: profile.buyerSettings?.communicationLanguage || 'English',
+            savedShippingAddresses: profile.buyerSettings?.savedShippingAddresses || [],
+            billingInfo: profile.buyerSettings?.billingInfo || {}
+          },
+          manufacturerSettings: {
+            technologies: profile.manufacturerSettings?.technologies || [],
+            materials: profile.manufacturerSettings?.materials || [],
+            partTypes: profile.manufacturerSettings?.partTypes || [],
+            machinery: profile.manufacturerSettings?.machinery || [],
+            regionsServed: profile.manufacturerSettings?.regionsServed || [],
+            languages: profile.manufacturerSettings?.languages || ['English']
+          },
+          primaryMaterials: profile.primaryMaterials || [],
+          certifications: profile.certifications || [],
+          maxDimensions: profile.maxDimensions || { height: 0, width: 0, length: 0 }
+        });
+      } catch (error) {
+        showError('Failed to fetch profile settings');
+      }
+    };
     if (user) {
       setFormData({
+        fullName: user.fullName || '',
+        email: user.email || '',
+        phoneNumber: user.phoneNumber || '',
         companyName: user.companyName || '',
         website: user.website || '',
+        companyLogo: user.companyLogo || '',
+        companyBanner: user.companyBanner || '',
+        address: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        zipCode: user.zipCode || '',
+        country: user.country || '',
+        companySize: user.companySize || '',
+        gstNumber: user.gstNumber || '',
         industryVertical: user.industryVertical || '',
-        buyerSettings: user.buyerSettings || {
-          defaultCountry: '',
-          defaultRegion: '',
-          preferredCurrency: 'USD',
-          defaultIncoterms: 'FOB',
-          communicationLanguage: 'English',
-          savedShippingAddresses: [],
-          billingInfo: {}
+        manufacturingTypes: user.manufacturingTypes || [],
+        yearsInBusiness: user.yearsInBusiness || 0,
+        annualSpending: user.annualSpending || '',
+        procurementTeamSize: user.procurementTeamSize || '',
+        preferredLeadTime: user.preferredLeadTime || '',
+        buyerSettings: {
+          defaultCountry: user.buyerSettings?.defaultCountry || '',
+          defaultRegion: user.buyerSettings?.defaultRegion || '',
+          preferredCurrency: user.buyerSettings?.preferredCurrency || 'USD',
+          defaultIncoterms: user.buyerSettings?.defaultIncoterms || 'FOB',
+          communicationLanguage: user.buyerSettings?.communicationLanguage || 'English',
+          savedShippingAddresses: user.buyerSettings?.savedShippingAddresses || [],
+          billingInfo: user.buyerSettings?.billingInfo || {}
         },
         manufacturerSettings: {
           technologies: user.manufacturerSettings?.technologies || [],
@@ -70,8 +156,9 @@ const ProfilePage = () => {
         certifications: user.certifications || [],
         maxDimensions: user.maxDimensions || { height: 0, width: 0, length: 0 }
       });
+      fetchProfile();
     }
-  }, [user]);
+  }, [user, showError]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -89,14 +176,22 @@ const ProfilePage = () => {
     }
   };
 
-  const handleArrayChange = (field, value, isChecked) => {
-    setFormData(prev => {
-      const current = prev[field] || [];
-      if (isChecked) {
-        return { ...prev, [field]: [...current, value] };
-      } else {
-        return { ...prev, [field]: current.filter(item => item !== value) };
+  const handleArrayChange = (fieldPath, value, isChecked) => {
+    const path = fieldPath.split('.');
+    setFormData((prev) => {
+      const next = { ...prev };
+      const parentKey = path[0];
+      if (path.length === 1) {
+        const current = next[parentKey] || [];
+        next[parentKey] = isChecked ? [...current, value] : current.filter((item) => item !== value);
+        return next;
       }
+      const childKey = path[1];
+      const parentObj = { ...(next[parentKey] || {}) };
+      const current = parentObj[childKey] || [];
+      parentObj[childKey] = isChecked ? [...current, value] : current.filter((item) => item !== value);
+      next[parentKey] = parentObj;
+      return next;
     });
   };
 
@@ -107,11 +202,43 @@ const ProfilePage = () => {
     try {
       const response = await profileAPI.update(formData);
       if (response.success) {
-        updateUser(response.data.data);
+        await updateUser();
         showSuccess('Profile updated successfully!');
       }
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to update profile');
+      let errorMessage = 'Failed to update profile. Please check your information and try again.';
+      
+      // Provide more specific but user-friendly messages for common validation errors
+      const errorData = error.response?.data?.message || '';
+      if (errorData.includes('phoneNumber')) {
+        errorMessage = 'Please provide a valid phone number.';
+      } else if (errorData.includes('billingInfo')) {
+        errorMessage = 'There was an issue with your billing information format. Please try again.';
+      } else if (errorData.includes('Cast to Object failed')) {
+        errorMessage = 'Some data fields are in an incorrect format. Please refresh and try again.';
+      }
+      
+      showError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpload = async (field, file, folder) => {
+    if (!file) return;
+    setLoading(true);
+    try {
+      const payload = new FormData();
+      payload.append('file', file);
+      payload.append('type', 'image');
+      payload.append('folder', folder);
+      const response = await uploadAPI.uploadFile(payload);
+      const url = response?.data?.url || response?.url;
+      if (!url) throw new Error('Upload response missing URL');
+      setFormData((prev) => ({ ...prev, [field]: url }));
+      showSuccess(`${field === 'companyLogo' ? 'Company logo' : 'Company banner'} uploaded`);
+    } catch (error) {
+      showError(error.response?.data?.message || `Failed to upload ${field}`);
     } finally {
       setLoading(false);
     }
@@ -163,46 +290,164 @@ const ProfilePage = () => {
         {/* Company Tab */}
         {activeTab === 'company' && (
           <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company Name *
-              </label>
-              <input
-                type="text"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                required
-              />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email (Read-only)
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number *
+                </label>
+                <input
+                  type="text"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Industry Vertical
+                </label>
+                <input
+                  type="text"
+                  name="industryVertical"
+                  value={formData.industryVertical}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  placeholder="e.g., Automotive, Aerospace, Medical"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  placeholder="https://example.com"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Industry Vertical
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
               <input
                 type="text"
-                name="industryVertical"
-                value={formData.industryVertical}
+                name="address"
+                value={formData.address}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                placeholder="e.g., Automotive, Aerospace, Medical"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Website
-              </label>
-              <input
-                type="url"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                placeholder="https://example.com"
-              />
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
+                <input
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code *</label>
+                <input
+                  type="text"
+                  name="zipCode"
+                  value={formData.zipCode}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
+                {formData.companyLogo ? (
+                  <img src={formData.companyLogo} alt="Company logo" className="h-20 w-20 object-cover rounded border mb-2" />
+                ) : (
+                  <div className="h-20 w-20 rounded border bg-gray-50 mb-2" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleUpload('companyLogo', e.target.files?.[0], 'company-logos')}
+                  className="block w-full text-sm text-gray-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Company Banner</label>
+                {formData.companyBanner ? (
+                  <img src={formData.companyBanner} alt="Company banner" className="h-20 w-full object-cover rounded border mb-2" />
+                ) : (
+                  <div className="h-20 w-full rounded border bg-gray-50 mb-2" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleUpload('companyBanner', e.target.files?.[0], 'company-banners')}
+                  className="block w-full text-sm text-gray-600"
+                />
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -210,13 +455,17 @@ const ProfilePage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Country
                 </label>
-                <input
-                  type="text"
+                <select
                   name="country"
-                  value={user?.country || ''}
+                  value={formData.country}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  readOnly
-                />
+                >
+                  <option value="">Select Country</option>
+                  {countries.map(c => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -226,11 +475,26 @@ const ProfilePage = () => {
                 <input
                   type="text"
                   name="companySize"
-                  value={user?.companySize || ''}
+                  value={formData.companySize}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  readOnly
                 />
               </div>
+
+              {(isManufacturer) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GST Number
+                  </label>
+                  <input
+                    type="text"
+                    name="gstNumber"
+                    value={formData.gstNumber}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -243,13 +507,17 @@ const ProfilePage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Default Country
                 </label>
-                <input
-                  type="text"
+                <select
                   name="buyerSettings.defaultCountry"
                   value={formData.buyerSettings.defaultCountry}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                />
+                >
+                  <option value="">Select Country</option>
+                  {countries.map(c => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -270,23 +538,7 @@ const ProfilePage = () => {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Currency
-                </label>
-                <select
-                  name="buyerSettings.preferredCurrency"
-                  value={formData.buyerSettings.preferredCurrency}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                >
-                  {currencyOptions.map(currency => (
-                    <option key={currency} value={currency}>{currency}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Default Incoterms
+                  Preferred Incoterms
                 </label>
                 <select
                   name="buyerSettings.defaultIncoterms"
@@ -301,18 +553,61 @@ const ProfilePage = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Communication Language
-              </label>
-              <input
-                type="text"
-                name="buyerSettings.communicationLanguage"
-                value={formData.buyerSettings.communicationLanguage}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                placeholder="e.g., English, German, French"
-              />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Annual Spending
+                </label>
+                <input
+                  type="text"
+                  name="annualSpending"
+                  value={formData.annualSpending}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  placeholder="Estimated annual spend"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Procurement Team Size
+                </label>
+                <input
+                  type="text"
+                  name="procurementTeamSize"
+                  value={formData.procurementTeamSize}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preferred Lead Time
+                </label>
+                <input
+                  type="text"
+                  name="preferredLeadTime"
+                  value={formData.preferredLeadTime}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  placeholder="e.g., 2-4 weeks"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Communication Language
+                </label>
+                <input
+                  type="text"
+                  name="buyerSettings.communicationLanguage"
+                  value={formData.buyerSettings.communicationLanguage}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                  placeholder="e.g., English, German, French"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -329,13 +624,28 @@ const ProfilePage = () => {
                   <label key={tech} className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={formData.manufacturerSettings.technologies.includes(tech)}
-                      onChange={(e) => handleArrayChange('manufacturerSettings.technologies', tech, e.target.checked)}
+                      checked={formData.manufacturingTypes.includes(tech)}
+                      onChange={(e) => handleArrayChange('manufacturingTypes', tech, e.target.checked)}
                       className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
                     />
                     <span className="text-sm text-gray-700">{tech.replace('_', ' ')}</span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Years in Business
+                </label>
+                <input
+                  type="number"
+                  name="yearsInBusiness"
+                  value={formData.yearsInBusiness}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
+                />
               </div>
             </div>
 

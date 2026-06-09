@@ -49,7 +49,7 @@ export const CartProvider = ({ children }) => {
   // API base URL
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
   ? `${import.meta.env.VITE_BACKEND_URL}/api`
-  : 'http://localhost:5000/api';
+  : 'http://localhost:5005/api';
 
 
   // Helper function to get auth token

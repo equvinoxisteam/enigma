@@ -1,25 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight,
   Home, FileText, CheckCircle, Mail, BarChart3,
-  Factory, PlusCircle, Star, DollarSign, MessageSquare
+  Factory, PlusCircle, Star, DollarSign, MessageSquare, Check
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { notificationAPI } from '../../api/notificationAPI';
 import LoginModal from '../auth/LoginModal';
+import AISearchComponent from '../AISearchComponent';
 
 const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    // Load from localStorage or default to true
     const saved = localStorage.getItem('sidebarOpen');
     return saved !== null ? saved === 'true' : true;
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
 
   // Handle responsive behavior
   useEffect(() => {
@@ -37,6 +44,60 @@ const DashboardLayout = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('sidebarOpen', sidebarOpen.toString());
   }, [sidebarOpen]);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const data = await notificationAPI.getUnreadCount();
+      setUnreadCount(data.count || 0);
+    } catch (err) {
+      // silently fail
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000); // poll every 30s
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, fetchUnreadCount]);
+
+  // Load notifications when bell clicked
+  const handleBellClick = async () => {
+    setShowNotifications(!showNotifications);
+    setShowProfileMenu(false);
+    if (!showNotifications) {
+      setNotificationsLoading(true);
+      try {
+        const data = await notificationAPI.getAll(1, 10);
+        setNotifications(data.data || []);
+      } catch { }
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationAPI.markAllAsRead();
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch { }
+  };
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // If not authenticated, show login modal
   if (!isAuthenticated) {
@@ -132,32 +193,22 @@ const DashboardLayout = ({ children }) => {
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
               {sidebarOpen ? (
-                <div className="flex items-center justify-between w-full gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <img 
-                      src="/indianet png.png" 
-                      alt="Enigma Logo" 
-                      className="h-8 w-auto object-contain flex-shrink-0"
-                    />
-                    <span className="text-lg font-bold whitespace-nowrap" style={{ color: '#4881F8' }}>
-                      Enigma
-                    </span>
-                  </div>
-                  <ChevronLeft 
-                    size={20} 
-                    className="text-gray-400 group-hover:text-[#4881F8] transition-colors flex-shrink-0" 
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center w-full">
+                <div className="flex items-center w-full gap-3">
                   <img 
                     src="/indianet png.png" 
                     alt="Enigma Logo" 
-                    className="h-8 w-auto object-contain mb-2"
+                    className="h-8 w-auto object-contain flex-shrink-0"
                   />
-                  <ChevronRight 
-                    size={16} 
-                    className="text-gray-400 group-hover:text-[#4881F8] transition-colors" 
+                  <span className="text-lg font-bold whitespace-nowrap" style={{ color: '#4881F8' }}>
+                    Enigma
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-full">
+                  <img 
+                    src="/indianet png.png" 
+                    alt="Enigma Logo" 
+                    className="h-8 w-auto object-contain"
                   />
                 </div>
               )}
@@ -334,47 +385,123 @@ const DashboardLayout = ({ children }) => {
 
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <button className="relative text-gray-600 hover:text-[#4881F8] transition-colors">
-              <Bell size={24} />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative" ref={notifRef}>
+              <button 
+                onClick={handleBellClick}
+                className="relative text-gray-600 hover:text-[#4881F8] transition-colors"
+              >
+                <Bell size={24} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <h3 className="font-semibold text-sm">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={handleMarkAllRead}
+                        className="text-xs text-[#4881F8] hover:underline flex items-center gap-1"
+                      >
+                        <Check size={12} /> Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificationsLoading ? (
+                      <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="p-8 text-center text-gray-400 text-sm">No notifications yet</div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div 
+                          key={notif._id}
+                          onClick={() => {
+                            if (notif.link) navigate(notif.link);
+                            setShowNotifications(false);
+                          }}
+                          className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${!notif.isRead ? 'bg-blue-50/40' : ''}`}
+                        >
+                          <p className="text-sm font-medium text-gray-800">{notif.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{notif.message}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{new Date(notif.createdAt).toLocaleString()}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
                 className="flex items-center space-x-2 text-gray-700 hover:text-[#4881F8] transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold">
-                  {user?.fullName?.charAt(0) || 'U'}
-                </div>
+                {user?.profileImage ? (
+                  <img src={user.profileImage} alt={user?.fullName || 'User'} className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold flex-shrink-0">
+                    {user?.fullName?.charAt(0) || 'U'}
+                  </div>
+                )}
                 {!isMobile && (
                   <span className="font-medium">{user?.fullName || 'User'}</span>
                 )}
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+                    {user?.profileImage ? (
+                      <img src={user.profileImage} alt={user?.fullName || 'User'} className="w-10 h-10 rounded-full object-cover border border-gray-200 flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
+                        {user?.fullName?.charAt(0) || 'U'}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{user?.fullName || 'User'}</p>
+                      <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                      <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#4881F8]/10 text-[#4881F8] font-medium">
+                        {user?.userType || 'BUYER'}
+                      </span>
+                    </div>
+                  </div>
                   <Link
                     to="/profile"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setShowProfileMenu(false)}
                   >
-                    My Profile
+                    <User size={14} className="inline mr-2" />My Profile
                   </Link>
                   <Link
                     to="/settings"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setShowProfileMenu(false)}
                   >
-                    Settings
+                    <Settings size={14} className="inline mr-2" />Settings
                   </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  <Link
+                    to="/help"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setShowProfileMenu(false)}
                   >
-                    Logout
-                  </button>
+                    <HelpCircle size={14} className="inline mr-2" />Help
+                  </Link>
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut size={14} className="inline mr-2" />Logout
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -387,14 +514,6 @@ const DashboardLayout = ({ children }) => {
         </main>
       </div>
 
-      {/* Click outside to close profile menu */}
-      {showProfileMenu && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowProfileMenu(false)}
-        />
-      )}
-
       {/* Mobile overlay when sidebar is open */}
       {isMobile && sidebarOpen && (
         <div
@@ -402,6 +521,7 @@ const DashboardLayout = ({ children }) => {
           onClick={toggleSidebar}
         />
       )}
+      <AISearchComponent />
     </div>
   );
 };

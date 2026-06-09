@@ -26,8 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    required: true,
-    match: [/^[6-9]\d{9}$/, 'Please add a valid 10-digit Indian mobile number']
+    required: true
   },
   
   // User Role
@@ -44,6 +43,14 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   website: {
+    type: String,
+    default: ''
+  },
+  companyLogo: {
+    type: String,
+    default: ''
+  },
+  companyBanner: {
     type: String,
     default: ''
   },
@@ -180,6 +187,19 @@ const userSchema = new mongoose.Schema({
     }],
     languages: [{
       type: String
+    }],
+    capacityStatus: {
+      type: String,
+      enum: ['OPEN', 'HIGH_DEMAND', 'FULL'],
+      default: 'OPEN'
+    },
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    videoSlides: [{
+      url: String,
+      title: String
     }]
   },
   
@@ -218,6 +238,83 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['ACTIVE', 'PENDING_VERIFICATION', 'SUSPENDED'],
     default: 'PENDING_VERIFICATION'
+  },
+  
+  // Admin Flag
+  isAdmin: {
+    type: Boolean,
+    default: false
+  },
+
+  // Subscription/Plan
+  subscription: {
+    planType: {
+      type: String,
+      enum: ['BUYER_FREE', 'FREE', 'STANDARD', 'PRO', 'ENTERPRISE'],
+      default: 'FREE'
+    },
+    status: {
+      type: String,
+      enum: ['ACTIVE', 'EXPIRED', 'PENDING', 'CANCELLED'],
+      default: 'ACTIVE'
+    },
+    amountPaid: {
+      type: Number,
+      default: 0
+    },
+    billingCycle: {
+      type: String,
+      enum: ['MONTHLY', 'YEARLY', 'NONE'],
+      default: 'YEARLY'
+    },
+    startsAt: {
+      type: Date,
+      default: Date.now
+    },
+    expiresAt: {
+      type: Date,
+      default: null
+    },
+    lastPaymentId: {
+      type: String,
+      default: ''
+    },
+    lastOrderId: {
+      type: String,
+      default: ''
+    }
+  },
+
+  // Account security
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false
+  },
+
+  // Notification preferences
+  notificationSettings: {
+    email: {
+      rfqRequests: { type: Boolean, default: true },
+      invitations: { type: Boolean, default: true },
+      statusChanges: { type: Boolean, default: true },
+      chatMessages: { type: Boolean, default: true },
+      shipments: { type: Boolean, default: true }
+    },
+    inApp: {
+      rfqRequests: { type: Boolean, default: true },
+      invitations: { type: Boolean, default: true },
+      statusChanges: { type: Boolean, default: true },
+      chatMessages: { type: Boolean, default: true },
+      shipments: { type: Boolean, default: true }
+    }
+  },
+
+  // UI/User preferences
+  preferences: {
+    currency: { type: String, default: 'USD' },
+    language: { type: String, default: 'English' },
+    timezone: { type: String, default: 'UTC' },
+    theme: { type: String, enum: ['light', 'dark', 'system'], default: 'light' }
   },
   
   // Timestamps

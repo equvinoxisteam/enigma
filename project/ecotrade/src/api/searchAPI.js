@@ -31,6 +31,18 @@ export const searchAPI = {
     });
     const response = await axiosInstance.get(`/api/search/manufacturers?${params.toString()}`);
     return response.data;
+  },
+
+  // Get AI Recommendations
+  getRecommendations: async () => {
+    const response = await axiosInstance.get('/api/search/recommendations');
+    return response.data;
+  },
+
+  // Perform AI Search
+  aiSearch: async (query) => {
+    const response = await axiosInstance.get(`/api/search/ai?query=${encodeURIComponent(query)}`);
+    return response.data;
   }
 };
 

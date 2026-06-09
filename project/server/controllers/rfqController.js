@@ -2,6 +2,7 @@ const RFQ = require('../models/RFQ');
 const ManufacturerRequest = require('../models/ManufacturerRequest');
 const Invitation = require('../models/Invitation');
 const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 // @desc    Create new RFQ
 // @route   POST /api/rfqs
@@ -26,12 +27,24 @@ const createRFQ = async (req, res) => {
 
     const rfq = await RFQ.create(rfqData);
 
+    // Create notification for the buyer
+    await createNotification({
+      userId: buyerId,
+      type: 'RFQ_CREATED',
+      title: 'RFQ Created Successfully',
+      message: `Your RFQ "${rfq.title}" has been created and is now open for manufacturer requests.`,
+      link: `/my-rfqs/${rfq._id}`
+    });
+
     res.status(201).json({
       success: true,
       data: rfq
     });
   } catch (error) {
     console.error('Create RFQ error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Invalid RFQ data', details: error.message });
+    }
     res.status(500).json({ message: 'Server error: ' + error.message });
   }
 };
@@ -47,13 +60,21 @@ const getMyRFQs = async (req, res) => {
 
     let query = {};
 
-    if (userType === 'BUYER' || userType === 'HYBRID') {
+    if (userType === 'BUYER') {
       query.buyerId = userId;
-    } else if (userType === 'MANUFACTURER' || userType === 'HYBRID') {
+    } else if (userType === 'MANUFACTURER') {
       // For manufacturers, get RFQs they've requested or been selected for
       const requestedRFQs = await ManufacturerRequest.find({ manufacturerId: userId }).select('rfqId');
       const rfqIds = requestedRFQs.map(r => r.rfqId);
       query.$or = [
+        { _id: { $in: rfqIds } },
+        { selectedManufacturerId: userId }
+      ];
+    } else if (userType === 'HYBRID') {
+      const requestedRFQs = await ManufacturerRequest.find({ manufacturerId: userId }).select('rfqId');
+      const rfqIds = requestedRFQs.map(r => r.rfqId);
+      query.$or = [
+        { buyerId: userId },
         { _id: { $in: rfqIds } },
         { selectedManufacturerId: userId }
       ];
@@ -316,6 +337,17 @@ const getRFQById = async (req, res) => {
       rfq.selectedManufacturerId._id.toString() === userId.toString();
 
     if (!isBuyer && !isManufacturer && req.user.userType !== 'ADMIN') {
+      const isOpenPoolRfq = rfq.status === 'OPEN_FOR_REQUESTS' || rfq.status === 'REQUESTS_PENDING';
+      const canPreviewFromPool = (req.user.userType === 'MANUFACTURER' || req.user.userType === 'HYBRID') && isOpenPoolRfq;
+      if (canPreviewFromPool) {
+        return res.json({
+          success: true,
+          data: {
+            ...rfq.toObject(),
+            manufacturerRequests: []
+          }
+        });
+      }
       // Check if manufacturer has requested this RFQ
       const request = await ManufacturerRequest.findOne({
         rfqId: rfq._id,
@@ -476,6 +508,16 @@ const requestRFQ = async (req, res) => {
       await rfq.save();
     }
 
+    // Notify buyer about new manufacturer request
+    await createNotification({
+      userId: rfq.buyerId,
+      type: 'QUOTE_RECEIVED',
+      title: 'New Manufacturer Request',
+      message: `A manufacturer has requested to work on your RFQ "${rfq.title}".`,
+      link: `/my-rfqs/${rfq._id}?tab=requests`,
+      metadata: { rfqId: rfq._id, manufacturerId }
+    });
+
     res.status(201).json({
       success: true,
       data: manufacturerRequest
@@ -537,6 +579,16 @@ const acceptManufacturer = async (req, res) => {
         respondedAt: new Date()
       }
     );
+
+    // Notify accepted manufacturer
+    await createNotification({
+      userId: manufacturerRequest.manufacturerId._id,
+      type: 'QUOTE_ACCEPTED',
+      title: 'Your Request Was Accepted!',
+      message: `You have been selected as the manufacturer for RFQ "${rfq.title}".`,
+      link: `/accepted-rfqs/${rfq._id}`,
+      metadata: { rfqId: rfq._id }
+    });
 
     res.json({
       success: true,

@@ -2,13 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { searchAPI } from '../api/searchAPI';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Filter, FileText, MapPin, Calendar, Eye } from 'lucide-react';
+import { Search, Filter, FileText, MapPin, Calendar, Eye, Box, Info, Sparkles, ChevronRight, AlertCircle, Shield, Zap, Globe } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { hasFeature, FEATURE_KEYS } from '../config/planFeatures';
+import Button from '../components/ui/Button';
 
 const RFQPoolPage = () => {
   const navigate = useNavigate();
-  const { showError } = useToast();
+  const { user } = useAuth();
+  const { showError, showSuccess } = useToast();
   const [rfqs, setRfqs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     keyword: '',
     partType: '',
@@ -16,10 +21,6 @@ const RFQPoolPage = () => {
     country: '',
     region: '',
     certifications: [],
-    length: '',
-    diameter: '',
-    height: '',
-    width: '',
     material: '',
     quantity: ''
   });
@@ -29,10 +30,10 @@ const RFQPoolPage = () => {
     total: 0,
     pages: 0
   });
-  const [showFilters, setShowFilters] = useState(false);
+
+  const canRequest = hasFeature(user, FEATURE_KEYS.RFQ_RESPOND);
 
   const technologyOptions = ['CNC', 'TURNING', 'MILLING', '3D_PRINTING', 'SHEET_METAL', 'DIE_CASTING', 'INJECTION_MOLDING', 'STAMPING', 'WELDING', 'ASSEMBLY', 'OTHER'];
-  const certificationOptions = ['ISO_9001', 'ISO_13485', 'AS9100', 'IATF_16949', 'ROHS', 'OTHER'];
   const partTypeOptions = ['Gear', 'Pipe', 'Bracket', 'Housing', 'Shaft', 'Bearing', 'Valve', 'Connector', 'Mount', 'Cover', 'Other'];
 
   useEffect(() => {
@@ -50,7 +51,7 @@ const RFQPoolPage = () => {
       setRfqs(response.data || []);
       setPagination(response.pagination || pagination);
     } catch (error) {
-      showError('Failed to load RFQs: ' + (error.response?.data?.message || error.message));
+      showError('Failed to load RFQs');
     } finally {
       setLoading(false);
     }
@@ -69,14 +70,6 @@ const RFQPoolPage = () => {
     handleFilterChange('technologies', updated);
   };
 
-  const handleCertificationToggle = (cert) => {
-    const current = filters.certifications || [];
-    const updated = current.includes(cert)
-      ? current.filter(c => c !== cert)
-      : [...current, cert];
-    handleFilterChange('certifications', updated);
-  };
-
   const clearFilters = () => {
     setFilters({
       keyword: '',
@@ -85,300 +78,189 @@ const RFQPoolPage = () => {
       country: '',
       region: '',
       certifications: [],
-      length: '',
-      diameter: '',
-      height: '',
-      width: '',
       material: '',
       quantity: ''
     });
-    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">RFQ Pool</h1>
-        <p className="text-gray-600">Browse RFQs matching your manufacturing capabilities</p>
-      </div>
-
-      {/* Search and Filter Bar */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search RFQs by title or description..."
-              value={filters.keyword}
-              onChange={(e) => handleFilterChange('keyword', e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-            />
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+    <div className="max-w-7xl mx-auto py-8 px-4">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+        <div>
+          <h1 className="text-5xl font-black text-[#01364a] mb-3 tracking-tighter">RFQ Pool</h1>
+          <p className="text-gray-500 font-bold text-lg">Browse thousands of active manufacturing opportunities worldwide.</p>
+        </div>
+        <div className="flex gap-4">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-ai-search'))}
+            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-500/20 hover:scale-105 transition-all"
           >
-            <Filter size={20} className="mr-2" />
-            Filters
+            <Sparkles size={18} />
+            AI Smart Search
+          </button>
+          <button 
+             onClick={() => window.dispatchEvent(new CustomEvent('open-ai-search'))}
+             className="flex items-center gap-3 px-8 py-4 bg-[#01364a] text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-900/10 hover:scale-105 transition-all"
+          >
+            <Box size={18} />
+            Model Match (STL)
           </button>
         </div>
+      </div>
 
-        {/* Advanced Filters */}
+      {/* Search and Filters */}
+      <div className="bg-white border border-gray-100 rounded-[2.5rem] p-6 mb-8 shadow-2xl shadow-blue-900/5">
+        <div className="flex flex-col lg:flex-row items-center gap-4 mb-6">
+          <div className="flex-1 w-full relative group">
+            <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-[#4881F8] transition-colors" size={20} />
+            <input
+              type="text"
+              placeholder="Search by keywords (e.g. Copper, Stainless, Automotive)..."
+              value={filters.keyword}
+              onChange={(e) => handleFilterChange('keyword', e.target.value)}
+              className="w-full pl-16 pr-6 py-5 bg-gray-50 border-2 border-transparent focus:border-[#4881F8] focus:bg-white rounded-2xl text-lg font-bold outline-none transition-all shadow-inner"
+            />
+          </div>
+          <div className="flex w-full lg:w-auto gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex-1 lg:w-40 flex items-center justify-center gap-3 px-6 py-5 border-2 rounded-2xl font-black transition-all ${
+                showFilters ? 'bg-blue-50 border-blue-100 text-[#4881F8]' : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <Filter size={20} /> {showFilters ? 'Hide Filters' : 'Advanced'}
+            </button>
+          </div>
+        </div>
+
         {showFilters && (
-          <div className="border-t border-gray-200 pt-4 mt-4 space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Part Type</label>
-                <select
-                  value={filters.partType}
-                  onChange={(e) => handleFilterChange('partType', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                >
-                  <option value="">All Part Types</option>
-                  {partTypeOptions.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Technologies</label>
-                <div className="max-h-32 overflow-y-auto space-y-2">
-                  {technologyOptions.map(tech => (
-                    <label key={tech} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.technologies?.includes(tech)}
-                        onChange={() => handleTechnologyToggle(tech)}
-                        className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                      />
-                      <span className="text-sm text-gray-700">{tech.replace('_', ' ')}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Material</label>
-                <input
-                  type="text"
-                  value={filters.material}
-                  onChange={(e) => handleFilterChange('material', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., Steel, ABS, Wood"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Max Length (mm)</label>
-                <input
-                  type="number"
-                  value={filters.length}
-                  onChange={(e) => handleFilterChange('length', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., 150"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Max Width (mm)</label>
-                <input
-                  type="number"
-                  value={filters.width}
-                  onChange={(e) => handleFilterChange('width', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., 150"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Max Height (mm)</label>
-                <input
-                  type="number"
-                  value={filters.height}
-                  onChange={(e) => handleFilterChange('height', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., 150"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Max Diameter (mm)</label>
-                <input
-                  type="number"
-                  value={filters.diameter}
-                  onChange={(e) => handleFilterChange('diameter', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., 150"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-                <input
-                  type="text"
-                  value={filters.country}
-                  onChange={(e) => handleFilterChange('country', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., Germany, Austria"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Region</label>
-                <input
-                  type="text"
-                  value={filters.region}
-                  onChange={(e) => handleFilterChange('region', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="e.g., DACH, European Union"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
-                <input
-                  type="number"
-                  value={filters.quantity}
-                  onChange={(e) => handleFilterChange('quantity', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent"
-                  placeholder="Min quantity"
-                />
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-300 border-t border-gray-50 pt-6 mt-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Certifications</label>
-              <div className="grid grid-cols-3 gap-2">
-                {certificationOptions.map(cert => (
-                  <label key={cert} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.certifications?.includes(cert)}
-                      onChange={() => handleCertificationToggle(cert)}
-                      className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
-                    />
-                    <span className="text-sm text-gray-700">{cert.replace('_', ' ')}</span>
-                  </label>
+              <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                 Part Type <div title="Specify the functional category"><Info size={12} className="text-gray-300" /></div>
+              </label>
+              <select
+                value={filters.partType}
+                onChange={(e) => handleFilterChange('partType', e.target.value)}
+                className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-[#01364a] focus:border-[#4881F8] outline-none transition-all"
+              >
+                <option value="">All Part Types</option>
+                {partTypeOptions.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                 Material
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Aluminum 6061"
+                value={filters.material}
+                onChange={(e) => handleFilterChange('material', e.target.value)}
+                className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold text-[#01364a] focus:border-[#4881F8] outline-none transition-all"
+              />
+            </div>
+
+            <div className="lg:col-span-2">
+              <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                 Manufacturing Skills
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {technologyOptions.slice(0, 6).map(tech => (
+                  <button
+                    key={tech}
+                    onClick={() => handleTechnologyToggle(tech)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 ${
+                      filters.technologies.includes(tech)
+                        ? 'bg-[#4881F8] border-[#4881F8] text-white'
+                        : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                    }`}
+                  >
+                    {tech}
+                  </button>
                 ))}
               </div>
             </div>
-
-            <button
-              onClick={clearFilters}
-              className="text-sm text-[#4881F8] hover:underline"
-            >
-              Clear all filters
-            </button>
           </div>
         )}
       </div>
 
-      {/* Results */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+      {/* RFQ List */}
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+        {loading ? (
+          Array(5).fill(0).map((_, i) => (
+            <div key={i} className="bg-white border border-gray-100 rounded-[2rem] p-8 animate-pulse">
+              <div className="h-6 bg-gray-100 rounded w-1/3 mb-4"></div>
+              <div className="h-4 bg-gray-50 rounded w-1/4"></div>
             </div>
-          ))}
-        </div>
-      ) : rfqs.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-          <FileText size={48} className="text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No RFQs found</h3>
-          <p className="text-gray-600 mb-4">Try adjusting your filters to see more results</p>
-          <button
-            onClick={clearFilters}
-            className="text-[#4881F8] hover:underline"
-          >
-            Clear filters
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            {rfqs.map((rfq) => (
-              <Link
-                key={rfq._id}
-                to={`/rfqs-pool/${rfq._id}`}
-                className="bg-white border border-gray-200 rounded-lg p-6 hover:border-[#4881F8] hover:shadow-md transition-all"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex-1">{rfq.title}</h3>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  {rfq.workpieces?.[0] && (
-                    <>
-                      {rfq.workpieces[0].partType && (
-                        <div className="text-sm text-gray-600">
-                          <span className="font-medium">Part Type:</span> {rfq.workpieces[0].partType}
-                        </div>
-                      )}
-                      <div className="flex items-center text-sm text-gray-600">
-                        <FileText size={16} className="mr-2" />
-                        {rfq.workpieces[0].technology?.replace('_', ' ')} • {rfq.workpieces[0].material}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin size={16} className="mr-2" />
-                        {rfq.country} {rfq.region && `• ${rfq.region}`}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar size={16} className="mr-2" />
-                        Deadline: {new Date(rfq.rfqDeadline).toLocaleDateString()}
-                      </div>
-                      {rfq.workpieces[0].dimensions && (
-                        <div className="text-sm text-gray-600">
-                          Dimensions: {rfq.workpieces[0].dimensions.length} × {rfq.workpieces[0].dimensions.width} × {rfq.workpieces[0].dimensions.height} mm
-                          {rfq.workpieces[0].dimensions.diameter > 0 && ` (D: ${rfq.workpieces[0].dimensions.diameter}mm)`}
-                        </div>
-                      )}
-                      <div className="text-sm text-gray-600">
-                        Quantity: {rfq.workpieces[0].quantity}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <span className="text-xs text-gray-500">
+          ))
+        ) : rfqs.length > 0 ? (
+          rfqs.map((rfq) => (
+            <div 
+              key={rfq._id}
+              className="group relative bg-white border border-gray-100 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="px-3 py-1 bg-blue-50 text-[#4881F8] text-[10px] font-black uppercase tracking-widest rounded-lg border border-blue-100">
+                    {rfq.workpieces?.[0]?.technology || 'CNC'}
+                  </span>
+                  <span className="px-3 py-1 bg-gray-50 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-100">
                     RFQ #{rfq._id.toString().slice(-6)}
                   </span>
-                  <div className="flex items-center text-[#4881F8] text-sm">
-                    View Details
-                    <Eye size={16} className="ml-1" />
-                  </div>
                 </div>
-              </Link>
-            ))}
-          </div>
+                <h3 className="text-2xl font-black text-[#01364a] mb-2 group-hover:text-[#4881F8] transition-colors">{rfq.title}</h3>
+                <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 font-bold">
+                  <div className="flex items-center gap-2"><MapPin size={16} /> {rfq.country}</div>
+                  <div className="flex items-center gap-2"><Globe size={16} /> {rfq.region || 'Global'}</div>
+                  <div className="flex items-center gap-2"><Calendar size={16} /> Ends {new Date(rfq.deadline).toLocaleDateString()}</div>
+                </div>
+              </div>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex items-center justify-center space-x-2">
-              <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <span className="px-4 py-2 text-sm text-gray-600">
-                Page {pagination.page} of {pagination.pages}
-              </span>
-              <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page === pagination.pages}
-                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <Link
+                  to={`/rfqs-pool/${rfq._id}`}
+                  className="flex-1 md:flex-none px-8 py-4 bg-gray-50 hover:bg-gray-100 text-[#01364a] rounded-2xl font-black text-sm transition-all"
+                >
+                  View Details
+                </Link>
+                
+                {canRequest ? (
+                  <Link
+                    to={`/rfqs-pool/${rfq._id}?request=true`}
+                    className="flex-1 md:flex-none px-8 py-4 bg-[#01364a] text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-900/10 hover:bg-black transition-all"
+                  >
+                    Submit Request
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => navigate('/pricing')}
+                    className="flex-1 md:flex-none px-8 py-4 bg-gray-100 text-gray-400 rounded-2xl font-black text-sm flex items-center justify-center gap-2 opacity-80"
+                  >
+                    Upgrade to Request <Zap size={14} className="fill-current" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Feature Tip for non-paid */}
+              {!canRequest && (
+                <div className="absolute top-4 right-8 flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                  <AlertCircle size={12} /> Pro Feature
+                </div>
+              )}
             </div>
-          )}
-        </>
-      )}
+          ))
+        ) : (
+          <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200">
+            <h2 className="text-2xl font-black text-gray-400">No matching RFQs found</h2>
+            <p className="text-gray-400 font-bold">Try adjusting your filters or use our AI Search</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -3,6 +3,7 @@ const generateToken = require('../config/jwt');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const emailService = require('../emailService/EmailService');
+const { getEffectivePlanType, PLAN_TYPES } = require('../config/planFeatures');
 
 // @desc    Authenticate user
 // @route   POST /api/auth/login
@@ -14,9 +15,47 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    
+    // Check for admin login (from environment)
+    const isAdminLogin = (
+      normalizedEmail === process.env.ADMIN_EMAIL?.toLowerCase() &&
+      password === process.env.ADMIN_PASSWORD
+    );
 
-    if (user && (await bcrypt.compare(password, user.password))) {
+    let user;
+    if (isAdminLogin) {
+      user = await User.findOne({ email: normalizedEmail });
+      
+      // If admin user doesn't exist in DB, create it
+      if (!user) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        user = await User.create({
+          fullName: 'Platform Admin',
+          email: normalizedEmail,
+          password: hashedPassword,
+          phoneNumber: '0000000000',
+          companyName: 'Enigma Admin',
+          address: 'Admin Center',
+          city: 'Admin',
+          state: 'Admin',
+          zipCode: '00000',
+          userType: 'HYBRID',
+          isAdmin: true,
+          isEmailVerified: true,
+          status: 'ACTIVE'
+        });
+      } else if (!user.isAdmin) {
+        // Upgrade existing user to Admin if credentials match .env
+        user.isAdmin = true;
+        await user.save();
+      }
+    } else {
+      user = await User.findOne({ email: normalizedEmail });
+    }
+
+    if (user && (isAdminLogin || (await bcrypt.compare(password, user.password)))) {
       if (!user.isEmailVerified) {
         return res.status(401).json({ 
           message: 'Please verify your email address before logging in',
@@ -52,6 +91,9 @@ const loginUser = async (req, res) => {
         zipCode: user.zipCode || '',
         country: user.country || 'India',
         profileCompleteness,
+        subscription: user.subscription || null,
+        effectivePlanType: getEffectivePlanType(user),
+        isAdmin: user.isAdmin || false,
         token: generateToken(user._id)
       });
     }
@@ -97,6 +139,8 @@ const registerUser = async (req, res) => {
   } = req.body;
 
   try {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
     // Input validation
     if (!fullName || !email || !password || !userType || !phoneNumber || !companyName || !address || !city || !state || !zipCode) {
       return res.status(400).json({ message: 'All required fields must be filled' });
@@ -124,14 +168,15 @@ const registerUser = async (req, res) => {
     }
 
     // Check if user already exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
     
     if (userExists) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Validate manufacturing types for all user types
-    if (!manufacturingTypes || manufacturingTypes.length === 0) {
+    // Validate manufacturing types only for manufacturer-capable roles
+    const needsManufacturingProfile = userType === 'MANUFACTURER' || userType === 'HYBRID';
+    if (needsManufacturingProfile && (!manufacturingTypes || manufacturingTypes.length === 0)) {
       return res.status(400).json({ message: 'At least one manufacturing type must be selected' });
     }
 
@@ -154,7 +199,7 @@ const registerUser = async (req, res) => {
     const userData = {
       title: title || '',
       fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       userType,
       phoneNumber,
@@ -166,6 +211,14 @@ const registerUser = async (req, res) => {
       zipCode,
       country: country || 'India',
       gstNumber: gstNumber || '',
+      subscription: {
+        planType: userType === 'BUYER' ? PLAN_TYPES.BUYER_FREE : PLAN_TYPES.FREE,
+        status: 'ACTIVE',
+        amountPaid: 0,
+        billingCycle: 'YEARLY',
+        startsAt: new Date(),
+        expiresAt: null
+      },
       isEmailVerified: false,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
@@ -444,7 +497,10 @@ const getMe = async (req, res) => {
       manufacturerStatus: user.manufacturerStatus,
       profileCompleteness,
       manufacturingTypes: user.manufacturingTypes || [],
-      certifications: user.certifications || []
+      certifications: user.certifications || [],
+      subscription: user.subscription || null,
+      effectivePlanType: getEffectivePlanType(user),
+      isAdmin: user.isAdmin || false
     });
   } catch (error) {
     console.error('GetMe error:', error);
@@ -507,6 +563,7 @@ const updateProfile = async (req, res) => {
       zipCode: user.zipCode || '',
       country: user.country || 'India',
       profileCompleteness,
+      isAdmin: user.isAdmin || false,
       token: generateToken(user._id)
     });
   } catch (error) {
@@ -519,6 +576,26 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Submit upgrade request
+// @route   POST /api/auth/upgrade-request
+const requestUpgrade = async (req, res) => {
+  try {
+    const { planName, message } = req.body;
+    const UpgradeRequest = require('../models/UpgradeRequest');
+
+    const request = await UpgradeRequest.create({
+      user: req.user._id,
+      planName,
+      message
+    });
+
+    res.json({ success: true, message: 'Upgrade request submitted successfully', request });
+  } catch (error) {
+    console.error('Request upgrade error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   loginUser,
   registerUser,
@@ -527,5 +604,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   getMe,
-  updateProfile
+  updateProfile,
+  requestUpgrade
 };

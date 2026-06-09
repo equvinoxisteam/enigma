@@ -4,7 +4,8 @@ const API_URL = '/api/auth';
 
 export const login = async (userData) => {
   const response = await axios.post(`${API_URL}/login`, userData);
-  if (response.data) {
+  if (response.data && response.data.token) {
+    localStorage.setItem('token', response.data.token);
     localStorage.setItem('user', JSON.stringify(response.data));
   }
   return response.data;
@@ -54,8 +55,14 @@ export const updateProfile = async (userData, token) => {
   return response.data;
 };
 
+export const requestUpgrade = async (planData) => {
+  const response = await axios.post(`${API_URL}/upgrade-request`, planData);
+  return response.data;
+};
+
 export const logout = () => {
   localStorage.removeItem('user');
+  localStorage.removeItem('token');
 };
 
 export const authAPI = {
@@ -67,5 +74,6 @@ export const authAPI = {
   resetPassword,
   getMe,
   updateProfile,
-  logout
+  logout,
+  requestUpgrade
 };

@@ -14,23 +14,25 @@ const {
   getMyRFQs
 } = require('../controllers/rfqController');
 const { protect } = require('../middlewares/auth');
+const { requireUserTypes, requireFeature } = require('../middlewares/accessControl');
+const { FEATURE_KEYS } = require('../config/planFeatures');
 
 // All routes require authentication
 router.use(protect);
 
 // RFQ CRUD
-router.post('/', createRFQ);
+router.post('/', requireUserTypes('BUYER', 'HYBRID'), requireFeature(FEATURE_KEYS.RFQ_CREATE), createRFQ);
 router.get('/my-rfqs', getMyRFQs);
-router.get('/pool', getRFQPool);
-router.get('/accepted', getAcceptedRFQs);
+router.get('/pool', requireUserTypes('MANUFACTURER', 'HYBRID'), requireFeature(FEATURE_KEYS.RFQ_POOL_VIEW), getRFQPool);
+router.get('/accepted', requireUserTypes('MANUFACTURER', 'HYBRID'), getAcceptedRFQs);
 router.get('/:id', getRFQById);
-router.put('/:id', updateRFQ);
-router.delete('/:id', deleteRFQ);
+router.put('/:id', requireUserTypes('BUYER', 'HYBRID'), updateRFQ);
+router.delete('/:id', requireUserTypes('BUYER', 'HYBRID'), deleteRFQ);
 
 // RFQ Actions
-router.post('/:id/request', requestRFQ);
-router.post('/:id/accept-manufacturer', acceptManufacturer);
-router.post('/:id/reject-manufacturer', rejectManufacturer);
+router.post('/:id/request', requireUserTypes('MANUFACTURER', 'HYBRID'), requireFeature(FEATURE_KEYS.RFQ_RESPOND), requestRFQ);
+router.post('/:id/accept-manufacturer', requireUserTypes('BUYER', 'HYBRID'), acceptManufacturer);
+router.post('/:id/reject-manufacturer', requireUserTypes('BUYER', 'HYBRID'), rejectManufacturer);
 router.put('/:id/status', updateRFQStatus);
 
 module.exports = router;

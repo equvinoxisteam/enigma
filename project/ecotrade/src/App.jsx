@@ -38,14 +38,72 @@ import HelpPage from "./pages/HelpPage";
 import ManufacturersPoolPage from "./pages/ManufacturersPoolPage";
 import MyManufacturersPage from "./pages/MyManufacturersPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import DebugPage from "./pages/DebugPage";
+import TestLogin from "./pages/TestLogin";
+import QuickRegister from "./pages/QuickRegister";
+import ManufacturerProfilePage from "./pages/ManufacturerProfilePage";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import ProtectedAdminRoute from "./pages/admin/ProtectedAdminRoute";
+import { useAuth } from "./contexts/AuthContext";
+
+// Root Route Component to handle default redirect based on auth status
+const RootRedirect = () => {
+  const { isAuthenticated } = useAuth();
+  const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user');
+  
+  if (isAuthenticated || (token && user)) {
+    try {
+      const userData = JSON.parse(user || '{}');
+      if (userData.isAdmin) {
+        return <Navigate to="/admin" replace />;
+      }
+      return <Navigate to="/dashboard" replace />;
+    } catch (e) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+  return <Navigate to="/role-selection" replace />;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/role-selection" replace />;
+  const storedUser = localStorage.getItem('user');
+  
+  // Check if user has both token and user data
+  if (!token || !storedUser) {
+    return <Navigate to="/login" replace />;
   }
-  return children;
+  
+  // Try to parse user data to ensure it's valid
+  try {
+    JSON.parse(storedUser);
+    return children;
+  } catch (error) {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    return <Navigate to="/login" replace />;
+  }
+};
+
+const RoleProtectedRoute = ({ children, allowedUserTypes }) => {
+  const storedUser = localStorage.getItem('user');
+  if (!storedUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  try {
+    const user = JSON.parse(storedUser);
+    if (!allowedUserTypes.includes(user.userType)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+  } catch (error) {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    return <Navigate to="/login" replace />;
+  }
 };
 
 function App() {
@@ -102,9 +160,11 @@ function App() {
                 path="/start-rfq"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <StartRFQPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['BUYER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <StartRFQPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -112,9 +172,11 @@ function App() {
                 path="/rfqs-pool"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <RFQPoolPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['MANUFACTURER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <RFQPoolPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -122,9 +184,11 @@ function App() {
                 path="/rfqs-pool/:id"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <RFQDetailPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['MANUFACTURER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <RFQDetailPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -134,19 +198,6 @@ function App() {
                   <ProtectedRoute>
                     <DashboardLayout>
                       <MyRFQDetailPage />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/start-rfq"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <div className="max-w-4xl mx-auto">
-                        <h1 className="text-3xl font-bold mb-6">Start Your RFQ</h1>
-                        <p className="text-gray-600">RFQ creation page coming soon...</p>
-                      </div>
                     </DashboardLayout>
                   </ProtectedRoute>
                 }
@@ -165,9 +216,11 @@ function App() {
                 path="/accepted-rfqs"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <AcceptedRFQsPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['MANUFACTURER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <AcceptedRFQsPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -175,9 +228,11 @@ function App() {
                 path="/accepted-rfqs/:id"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <AcceptedRFQDetailPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['MANUFACTURER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <AcceptedRFQDetailPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -185,9 +240,11 @@ function App() {
                 path="/invitations"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <InvitationsPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['MANUFACTURER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <InvitationsPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -195,9 +252,11 @@ function App() {
                 path="/analytics"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <AnalyticsPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['MANUFACTURER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <AnalyticsPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -205,9 +264,11 @@ function App() {
                 path="/manufacturers-pool"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <ManufacturersPoolPage />
-                    </DashboardLayout>
+                    <RoleProtectedRoute allowedUserTypes={['BUYER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <ManufacturersPoolPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
                   </ProtectedRoute>
                 }
               />
@@ -215,8 +276,20 @@ function App() {
                 path="/my-manufacturers"
                 element={
                   <ProtectedRoute>
+                    <RoleProtectedRoute allowedUserTypes={['BUYER', 'HYBRID']}>
+                      <DashboardLayout>
+                        <MyManufacturersPage />
+                      </DashboardLayout>
+                    </RoleProtectedRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manufacturer/:id"
+                element={
+                  <ProtectedRoute>
                     <DashboardLayout>
-                      <MyManufacturersPage />
+                      <ManufacturerProfilePage />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }
@@ -242,6 +315,14 @@ function App() {
                 }
               />
               <Route
+                path="/admin/*"
+                element={
+                  <ProtectedAdminRoute>
+                    <AdminDashboard />
+                  </ProtectedAdminRoute>
+                }
+              />
+              <Route
                 path="/help"
                 element={
                   <ProtectedRoute>
@@ -251,10 +332,19 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              
+              {/* Debug Page (Public for testing) */}
+              <Route path="/debug" element={<DebugPage />} />
+              
+              {/* Test Login Page (Public for testing) */}
+              <Route path="/test-login" element={<TestLogin />} />
+              
+              {/* Quick Register Page (Public for testing) */}
+              <Route path="/quick-register" element={<QuickRegister />} />
 
               {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/role-selection" replace />} />
-              <Route path="*" element={<Navigate to="/role-selection" replace />} />
+              <Route path="/" element={<RootRedirect />} />
+              <Route path="*" element={<RootRedirect />} />
             </Routes>
             <ToastContainer />
           </Router>

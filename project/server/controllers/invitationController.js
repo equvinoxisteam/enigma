@@ -80,14 +80,20 @@ const acceptInvitation = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Create manufacturer request automatically
-    const manufacturerRequest = await ManufacturerRequest.create({
+    let manufacturerRequest = await ManufacturerRequest.findOne({
       rfqId: invitation.rfqId._id,
-      manufacturerId: req.user._id,
-      message: 'Accepted invitation',
-      proposedLeadTime: 30, // Default, can be updated
-      status: 'PENDING'
+      manufacturerId: req.user._id
     });
+
+    if (!manufacturerRequest) {
+      manufacturerRequest = await ManufacturerRequest.create({
+        rfqId: invitation.rfqId._id,
+        manufacturerId: req.user._id,
+        message: 'Accepted invitation',
+        proposedLeadTime: 30, // Default, can be updated
+        status: 'PENDING'
+      });
+    }
 
     invitation.status = 'ACCEPTED';
     invitation.respondedAt = new Date();
