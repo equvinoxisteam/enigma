@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { searchAPI } from '../api/searchAPI';
+import { rfqAPI } from '../api/rfqAPI';
 import { useToast } from '../contexts/ToastContext';
 import { Search, Filter, FileText, MapPin, Calendar, Eye, Box, Info, Sparkles, ChevronRight, AlertCircle, Shield, Zap, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,7 +43,7 @@ const RFQPoolPage = () => {
   const fetchRFQs = async () => {
     setLoading(true);
     try {
-      const response = await searchAPI.searchRFQs({
+      const response = await rfqAPI.getRFQPool({
         ...filters,
         page: pagination.page,
         limit: pagination.limit
@@ -212,12 +212,17 @@ const RFQPoolPage = () => {
                   <span className="px-3 py-1 bg-gray-50 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-100">
                     RFQ #{rfq._id.toString().slice(-6)}
                   </span>
+                  {rfq.matchScore != null && (
+                    <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-green-100">
+                      {rfq.matchScore}% Match
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-2xl font-black text-[#01364a] mb-2 group-hover:text-[#4881F8] transition-colors">{rfq.title}</h3>
                 <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 font-bold">
                   <div className="flex items-center gap-2"><MapPin size={16} /> {rfq.country}</div>
                   <div className="flex items-center gap-2"><Globe size={16} /> {rfq.region || 'Global'}</div>
-                  <div className="flex items-center gap-2"><Calendar size={16} /> Ends {new Date(rfq.deadline).toLocaleDateString()}</div>
+                  <div className="flex items-center gap-2"><Calendar size={16} /> Ends {rfq.rfqDeadline ? new Date(rfq.rfqDeadline).toLocaleDateString() : 'TBD'}</div>
                 </div>
               </div>
 

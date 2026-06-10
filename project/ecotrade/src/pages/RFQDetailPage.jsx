@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { rfqAPI } from '../api/rfqAPI';
 import { useToast } from '../contexts/ToastContext';
-import STLViewer from '../components/STLViewer';
-import { ArrowLeft, FileText, MapPin, Calendar, Package, CheckCircle, Send, MessageSquare } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { hasFeature, FEATURE_KEYS } from '../config/planFeatures';
+import CADFileViewer from '../components/CADFileViewer';
+import { ArrowLeft, FileText, Zap } from 'lucide-react';
 
 const RFQDetailPage = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showSuccess, showError } = useToast();
+  const canRequest = hasFeature(user, FEATURE_KEYS.RFQ_RESPOND);
   const [rfq, setRfq] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -23,6 +28,12 @@ const RFQDetailPage = () => {
   useEffect(() => {
     fetchRFQ();
   }, [id]);
+
+  useEffect(() => {
+    if (searchParams.get('request') === 'true' && canRequest) {
+      setShowRequestModal(true);
+    }
+  }, [searchParams, canRequest]);
 
   const fetchRFQ = async () => {
     setLoading(true);
@@ -82,12 +93,21 @@ const RFQDetailPage = () => {
             <p className="text-gray-600">RFQ #{rfq._id.toString().slice(-6)}</p>
           </div>
           {rfq.status === 'OPEN_FOR_REQUESTS' || rfq.status === 'REQUESTS_PENDING' ? (
-            <button
-              onClick={() => setShowRequestModal(true)}
-              className="px-6 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] transition-colors"
-            >
-              Request RFQ
-            </button>
+            canRequest ? (
+              <button
+                onClick={() => setShowRequestModal(true)}
+                className="px-6 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] transition-colors"
+              >
+                Request RFQ
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/pricing')}
+                className="px-6 py-2 bg-gray-100 text-gray-500 rounded-lg flex items-center gap-2 hover:bg-gray-200 transition-colors"
+              >
+                Upgrade to Request <Zap size={14} className="fill-current" />
+              </button>
+            )
           ) : (
             <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg">
               {rfq.status.replace('_', ' ')}
@@ -186,20 +206,9 @@ const RFQDetailPage = () => {
               <div key={index} className="border border-gray-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4">Workpiece {index + 1}</h3>
                 
-                {/* Three.js STL Viewer */}
-                {workpiece.mainFileUrl ? (
-                  <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-                    <STLViewer 
-                      fileUrl={workpiece.mainFileUrl} 
-                      height="400px"
-                      backgroundColor="#f9fafb"
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-gray-100 rounded-lg h-64 mb-4 flex items-center justify-center">
-                    <p className="text-gray-500">No STL file available</p>
-                  </div>
-                )}
+                <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                  <CADFileViewer workpiece={workpiece} height="400px" backgroundColor="#f9fafb" />
+                </div>
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>

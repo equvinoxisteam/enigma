@@ -5,7 +5,7 @@ import { chatAPI } from '../api/chatAPI';
 import { ratingAPI } from '../api/ratingAPI';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
-import STLViewer from '../components/STLViewer';
+import CADFileViewer from '../components/CADFileViewer';
 import { ArrowLeft, FileText, Users, MessageSquare, Package, CheckCircle, X, Star, Send } from 'lucide-react';
 
 const MyRFQDetailPage = () => {
@@ -253,19 +253,9 @@ const MyRFQDetailPage = () => {
             {rfq.workpieces?.map((workpiece, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4">Workpiece {index + 1}</h3>
-                {workpiece.mainFileUrl ? (
-                  <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-                    <STLViewer 
-                      fileUrl={workpiece.mainFileUrl} 
-                      height="400px"
-                      backgroundColor="#f9fafb"
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-gray-100 rounded-lg h-64 mb-4 flex items-center justify-center">
-                    <p className="text-gray-500">No STL file available</p>
-                  </div>
-                )}
+                <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                  <CADFileViewer workpiece={workpiece} height="400px" backgroundColor="#f9fafb" />
+                </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Technology</label>

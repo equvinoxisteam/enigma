@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { rfqAPI } from '../api/rfqAPI';
 import { uploadAPI } from '../api/uploadAPI';
-import STLViewer from '../components/STLViewer';
+import CADFileViewer from '../components/CADFileViewer';
 import { ArrowLeft, ArrowRight, Upload, X, File, FileText, Save, Box, Info, Sparkles, Shield, Zap, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 
@@ -294,14 +294,7 @@ const StartRFQPage = () => {
                       </label>
                       {wp.mainFileUrl ? (
                          <div className="bg-gray-900 rounded-[2.5rem] overflow-hidden relative group/viewer">
-                            {wp.mainFileUrl.toLowerCase().endsWith('.stl') ? (
-                              <STLViewer fileUrl={wp.mainFileUrl} height="400px" />
-                            ) : (
-                              <div className="h-64 flex flex-col items-center justify-center text-white/50">
-                                <Box size={48} className="mb-4" />
-                                <p className="font-bold">CAD Model Attached</p>
-                              </div>
-                            )}
+                            <CADFileViewer fileUrl={wp.mainFileUrl} height="400px" backgroundColor="#111827" />
                             <button 
                               type="button"
                               onClick={() => handleRemoveFile('main', index)}
