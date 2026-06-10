@@ -5,6 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { rfqAPI } from '../api/rfqAPI';
 import { uploadAPI } from '../api/uploadAPI';
 import CADFileViewer from '../components/CADFileViewer';
+import { getStlDimensionsFromFile } from '../utils/stlDimensions';
+import { getFileExtension } from '../utils/fileUtils';
 import { ArrowLeft, ArrowRight, Upload, X, File, FileText, Save, Box, Info, Sparkles, Shield, Zap, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 
@@ -117,8 +119,24 @@ const StartRFQPage = () => {
       const fileUrl = response.data?.url || response.url;
 
       if (type === 'main') {
-        handleWorkpieceChange(workpieceIndex, 'mainFileUrl', fileUrl);
-        handleWorkpieceChange(workpieceIndex, 'mainFile', file);
+        let parsedDimensions = null;
+        if (getFileExtension(file.name) === 'stl') {
+          parsedDimensions = await getStlDimensionsFromFile(file);
+        }
+
+        setFormData((prev) => {
+          const workpieces = [...prev.workpieces];
+          const current = workpieces[workpieceIndex];
+          workpieces[workpieceIndex] = {
+            ...current,
+            mainFileUrl: fileUrl,
+            mainFile: file,
+            dimensions: parsedDimensions
+              ? { ...current.dimensions, ...parsedDimensions }
+              : current.dimensions
+          };
+          return { ...prev, workpieces };
+        });
       } else if (type === 'nda') {
         setFormData(prev => ({ ...prev, ndaFileUrl: fileUrl, ndaFile: file }));
       } else {

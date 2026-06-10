@@ -46,13 +46,18 @@ export const getViewerFetchPath = (fileUrl) => {
     }
 
     if (parsed.hostname.includes('cloudfront.net') || parsed.hostname.includes('amazonaws.com')) {
-      if (import.meta.env.DEV) {
-        return parsed.pathname;
-      }
       return `/api/files/proxy?url=${encodeURIComponent(parsed.toString())}`;
     }
 
-    if (parsed.origin === backendBase || parsed.origin === window.location.origin) {
+    if (parsed.pathname.startsWith('/uploads/')) {
+      return `/api/files/proxy?url=${encodeURIComponent(parsed.toString())}`;
+    }
+
+    if (parsed.origin === backendBase) {
+      return `/api/files/proxy?url=${encodeURIComponent(parsed.toString())}`;
+    }
+
+    if (parsed.origin === window.location.origin) {
       return `${parsed.pathname}${parsed.search}`;
     }
 

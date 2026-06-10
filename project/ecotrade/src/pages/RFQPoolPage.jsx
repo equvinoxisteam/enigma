@@ -6,6 +6,8 @@ import { Search, Filter, FileText, MapPin, Calendar, Eye, Box, Info, Sparkles, C
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature, FEATURE_KEYS } from '../config/planFeatures';
 import Button from '../components/ui/Button';
+import CADFileViewer from '../components/CADFileViewer';
+import { getWorkpieceFileUrl } from '../utils/fileUtils';
 
 const RFQPoolPage = () => {
   const navigate = useNavigate();
@@ -202,9 +204,18 @@ const RFQPoolPage = () => {
           rfqs.map((rfq) => (
             <div 
               key={rfq._id}
-              className="group relative bg-white border border-gray-100 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300"
+              className="group relative bg-white border border-gray-100 rounded-[2.5rem] p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="flex-1">
+              {rfq.workpieces?.[0] && getWorkpieceFileUrl(rfq.workpieces[0]) && (
+                <div className="w-full lg:w-52 h-44 rounded-2xl overflow-hidden border border-gray-100 flex-shrink-0 bg-gray-900">
+                  <CADFileViewer
+                    workpiece={rfq.workpieces[0]}
+                    height="176px"
+                    backgroundColor="#111827"
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="px-3 py-1 bg-blue-50 text-[#4881F8] text-[10px] font-black uppercase tracking-widest rounded-lg border border-blue-100">
                     {rfq.workpieces?.[0]?.technology || 'CNC'}

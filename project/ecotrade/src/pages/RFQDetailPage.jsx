@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature, FEATURE_KEYS } from '../config/planFeatures';
 import CADFileViewer from '../components/CADFileViewer';
+import { getWorkpieceFileUrl } from '../utils/fileUtils';
 import { ArrowLeft, FileText, Zap } from 'lucide-react';
 
 const RFQDetailPage = () => {
@@ -170,6 +171,15 @@ const RFQDetailPage = () => {
                 </div>
               </div>
             </div>
+
+            {rfq.workpieces?.[0] && getWorkpieceFileUrl(rfq.workpieces[0]) && (
+              <div>
+                <h4 className="font-semibold mb-3">3D Model Preview</h4>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <CADFileViewer workpiece={rfq.workpieces[0]} height="400px" backgroundColor="#111827" />
+                </div>
+              </div>
+            )}
 
             {rfq.requestJustification && (
               <div>

@@ -39,20 +39,26 @@ const STEPViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor
 
         if (disposed || !mountRef.current) return;
 
+        const mountEl = mountRef.current;
         scene = new THREE.Scene();
         scene.background = new THREE.Color(backgroundColor);
 
-        const camera = new THREE.PerspectiveCamera(
-          75,
-          mountRef.current.clientWidth / mountRef.current.clientHeight,
-          0.1,
-          100000
-        );
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100000);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        mountRef.current.appendChild(renderer.domElement);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        mountEl.innerHTML = '';
+        mountEl.appendChild(renderer.domElement);
+
+        const resizeRenderer = () => {
+          if (!mountEl || !renderer || !camera) return;
+          const w = mountEl.clientWidth || mountEl.offsetWidth || 640;
+          const h = mountEl.clientHeight || mountEl.offsetHeight || 360;
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h, false);
+        };
+        resizeRenderer();
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -86,12 +92,7 @@ const STEPViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor
 
         setLoading(false);
 
-        const handleResize = () => {
-          if (!mountRef.current || !camera || !renderer) return;
-          camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
-        };
+        const handleResize = () => resizeRenderer();
         window.addEventListener('resize', handleResize);
 
         return () => {
@@ -140,7 +141,7 @@ const STEPViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor
         </a>
       </div>
       {loading && (
-        <div className="absolute inset-0 top-7 flex items-center justify-center bg-gray-100">
+        <div className="absolute inset-0 top-7 flex items-center justify-center bg-gray-900/80 z-20">
           <div className="text-center">
             <Loader2 className="animate-spin text-[#4881F8] mx-auto mb-2" size={32} />
             <p className="text-sm text-gray-600">Loading STEP model...</p>
@@ -163,7 +164,7 @@ const STEPViewer = ({ fileUrl, width = '100%', height = '400px', backgroundColor
           </div>
         </div>
       )}
-      <div ref={mountRef} style={{ width: '100%', height: `calc(${height} - 28px)` }} className={loading || error ? 'hidden' : ''} />
+      <div ref={mountRef} style={{ width: '100%', height: `calc(${height} - 28px)` }} className="relative" />
     </div>
   );
 };
