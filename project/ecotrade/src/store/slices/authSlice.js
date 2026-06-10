@@ -190,6 +190,14 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.isAuthenticated = true;
         state.error = null;
+        try {
+          localStorage.setItem('user', JSON.stringify(action.payload));
+          if (action.payload.token) {
+            localStorage.setItem('token', action.payload.token);
+          }
+        } catch {
+          // ignore localStorage errors
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -220,6 +228,14 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.isAuthenticated = true;
         state.error = null;
+        try {
+          localStorage.setItem('user', JSON.stringify(action.payload));
+          if (action.payload.token) {
+            localStorage.setItem('token', action.payload.token);
+          }
+        } catch {
+          // ignore localStorage errors
+        }
       })
       .addCase(getMe.rejected, (state) => {
         state.isLoading = false;

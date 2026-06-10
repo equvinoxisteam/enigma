@@ -4,17 +4,13 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const { protect } = require('../middlewares/auth');
+const { getS3Hostname } = require('../config/aws');
 
 const getAllowedHosts = () => {
   const hosts = new Set(['localhost', '127.0.0.1']);
-  const cloudfront = process.env.AWS_CLOUDFRONT_DOMAIN || '';
-  if (cloudfront) {
-    try {
-      hosts.add(new URL(cloudfront).hostname);
-    } catch {
-      hosts.add(cloudfront.replace(/^https?:\/\//, '').split('/')[0]);
-    }
-  }
+  const s3Host = getS3Hostname();
+  if (s3Host) hosts.add(s3Host);
+
   const apiUrl = process.env.API_URL || '';
   if (apiUrl) {
     try {
@@ -29,7 +25,6 @@ const isAllowedUrl = (targetUrl) => {
     const parsed = new URL(targetUrl);
     const allowed = getAllowedHosts();
     if (allowed.has(parsed.hostname)) return true;
-    if (parsed.hostname.includes('cloudfront.net')) return true;
     if (parsed.hostname.includes('amazonaws.com')) return true;
     return false;
   } catch {
@@ -37,7 +32,7 @@ const isAllowedUrl = (targetUrl) => {
   }
 };
 
-// @desc    Proxy remote files (CloudFront/S3) with CORS headers for CAD viewers
+// @desc    Proxy remote files (S3) with CORS headers for CAD viewers
 // @route   GET /api/files/proxy?url=<encoded-url>
 // @access  Private
 router.get('/proxy', protect, (req, res) => {

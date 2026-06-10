@@ -7,3 +7,4 @@ startCommand = "node server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"
+# In Railway dashboard: add a Volume mounted at /app/uploads for persistent profile/CAD files

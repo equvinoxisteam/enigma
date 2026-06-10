@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const emailService = require('../emailService/EmailService');
 const { getEffectivePlanType, PLAN_TYPES } = require('../config/planFeatures');
+const { formatUserResponse } = require('../utils/userResponse');
 
 // @desc    Authenticate user
 // @route   POST /api/auth/login
@@ -63,39 +64,7 @@ const loginUser = async (req, res) => {
         });
       }
 
-      // Calculate profile completeness for manufacturers
-      let profileCompleteness = 0;
-      if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
-        let score = 0;
-        if (user.manufacturingTypes && user.manufacturingTypes.length > 0) score += 20;
-        if (user.maxDimensions && (user.maxDimensions.height > 0 || user.maxDimensions.width > 0 || user.maxDimensions.length > 0)) score += 20;
-        if (user.facilityPhotos && user.facilityPhotos.length > 0) score += 15;
-        if (user.primaryMaterials && user.primaryMaterials.length > 0) score += 15;
-        if (user.certifications && user.certifications.length > 0) score += 15;
-        if (user.gstNumber) score += 15;
-        profileCompleteness = score;
-      } else {
-        profileCompleteness = 100; // Buyers don't need profile completion
-      }
-
-      return res.json({
-        _id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        userType: user.userType,
-        companyName: user.companyName,
-        phoneNumber: user.phoneNumber || '',
-        address: user.address || '',
-        city: user.city || '',
-        state: user.state || '',
-        zipCode: user.zipCode || '',
-        country: user.country || 'India',
-        profileCompleteness,
-        subscription: user.subscription || null,
-        effectivePlanType: getEffectivePlanType(user),
-        isAdmin: user.isAdmin || false,
-        token: generateToken(user._id)
-      });
+      return res.json(formatUserResponse(user, generateToken(user._id)));
     }
 
     return res.status(401).json({ message: 'Invalid credentials' });
@@ -473,46 +442,7 @@ const getMe = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Calculate profile completeness
-    let profileCompleteness = 0;
-    if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
-      let score = 0;
-      if (user.manufacturingTypes && user.manufacturingTypes.length > 0) score += 20;
-      if (user.maxDimensions && (user.maxDimensions.height > 0 || user.maxDimensions.width > 0 || user.maxDimensions.length > 0)) score += 20;
-      if (user.facilityPhotos && user.facilityPhotos.length > 0) score += 15;
-      if (user.primaryMaterials && user.primaryMaterials.length > 0) score += 15;
-      if (user.certifications && user.certifications.length > 0) score += 15;
-      if (user.gstNumber) score += 15;
-      profileCompleteness = score;
-    } else {
-      profileCompleteness = 100;
-    }
-
-    return res.json({
-      _id: user._id,
-      title: user.title,
-      fullName: user.fullName,
-      email: user.email,
-      userType: user.userType,
-      companyName: user.companyName,
-      website: user.website,
-      phoneNumber: user.phoneNumber || '',
-      address: user.address || '',
-      city: user.city || '',
-      state: user.state || '',
-      zipCode: user.zipCode || '',
-      country: user.country || 'India',
-      gstNumber: user.gstNumber || '',
-      isEmailVerified: user.isEmailVerified,
-      status: user.status,
-      manufacturerStatus: user.manufacturerStatus,
-      profileCompleteness,
-      manufacturingTypes: user.manufacturingTypes || [],
-      certifications: user.certifications || [],
-      subscription: user.subscription || null,
-      effectivePlanType: getEffectivePlanType(user),
-      isAdmin: user.isAdmin || false
-    });
+    return res.json(formatUserResponse(user));
   } catch (error) {
     console.error('GetMe error:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -545,38 +475,7 @@ const updateProfile = async (req, res) => {
 
     await user.save();
 
-    // Calculate profile completeness
-    let profileCompleteness = 0;
-    if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
-      let score = 0;
-      if (user.manufacturingTypes && user.manufacturingTypes.length > 0) score += 20;
-      if (user.maxDimensions && (user.maxDimensions.height > 0 || user.maxDimensions.width > 0 || user.maxDimensions.length > 0)) score += 20;
-      if (user.facilityPhotos && user.facilityPhotos.length > 0) score += 15;
-      if (user.primaryMaterials && user.primaryMaterials.length > 0) score += 15;
-      if (user.certifications && user.certifications.length > 0) score += 15;
-      if (user.gstNumber) score += 15;
-      profileCompleteness = score;
-    } else {
-      profileCompleteness = 100;
-    }
-
-    return res.json({
-      _id: user._id,
-      title: user.title,
-      fullName: user.fullName,
-      email: user.email,
-      userType: user.userType,
-      companyName: user.companyName,
-      phoneNumber: user.phoneNumber || '',
-      address: user.address || '',
-      city: user.city || '',
-      state: user.state || '',
-      zipCode: user.zipCode || '',
-      country: user.country || 'India',
-      profileCompleteness,
-      isAdmin: user.isAdmin || false,
-      token: generateToken(user._id)
-    });
+    return res.json(formatUserResponse(user, generateToken(user._id)));
   } catch (error) {
     console.error('Update profile error:', error);
     if (error.name === 'ValidationError') {

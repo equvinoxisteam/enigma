@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { rfqAPI } from '../api/rfqAPI';
 import { searchAPI } from '../api/searchAPI';
+import { getUserDisplayName } from '../utils/userDisplay';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -132,7 +133,7 @@ const DashboardPage = () => {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold">Welcome back, {user?.fullName || 'User'}!</h1>
+          <h1 className="text-3xl font-bold">Welcome back, {getUserDisplayName(user)}!</h1>
           {getRolePill()}
         </div>
         <p className="text-gray-600 font-medium opacity-80">

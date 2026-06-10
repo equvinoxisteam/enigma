@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { upload, uploadLarge, uploadMedium, uploadDocument, uploadToS3, getCloudFrontUrl } = require('../utils/s3Upload');
+const { upload, uploadLarge, uploadMedium, uploadDocument, uploadToS3, getPublicFileUrl } = require('../utils/s3Upload');
 const { protect, admin } = require('../middlewares/auth');
 
 // @desc    Upload single file (image, STL, document)
@@ -49,18 +49,18 @@ router.post('/single', protect, async (req, res) => {
 
       try {
         const s3Key = await uploadToS3(req.file, folder);
-        const cloudFrontUrl = getCloudFrontUrl(s3Key);
+        const publicUrl = getPublicFileUrl(s3Key);
 
         res.json({
           success: true,
           message: 'File uploaded successfully',
           data: {
-            url: cloudFrontUrl,
+            url: publicUrl,
             key: s3Key,
             size: req.file.size,
             mimetype: req.file.mimetype
           },
-          url: cloudFrontUrl // For backward compatibility
+          url: publicUrl
         });
       } catch (s3Error) {
         console.error('S3 upload error:', s3Error);
@@ -88,7 +88,7 @@ router.post('/multiple', protect, upload.array('images', 10), async (req, res) =
     for (const file of req.files) {
       const s3Key = await uploadToS3(file, folder);
       uploadedFiles.push({
-        url: getCloudFrontUrl(s3Key),
+        url: getPublicFileUrl(s3Key),
         key: s3Key,
         size: file.size,
         mimetype: file.mimetype
@@ -118,7 +118,7 @@ router.post('/product', protect, admin, (req, res, next) => {
       return res.status(400).json({ message: 'No files uploaded' });
     }
 
-    const uploadedImages = req.files.map(file => getCloudFrontUrl(file.key));
+    const uploadedImages = req.files.map(file => getPublicFileUrl(file.key));
     
     res.json({
       message: 'Product images uploaded successfully',
@@ -142,11 +142,11 @@ router.post('/category', protect, admin, (req, res, next) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const cloudFrontUrl = getCloudFrontUrl(req.file.key);
+    const publicUrl = getPublicFileUrl(req.file.key);
     
     res.json({
       message: 'Category image uploaded successfully',
-      image: cloudFrontUrl
+      image: publicUrl
     });
   } catch (error) {
     console.error('Upload error:', error);
@@ -166,11 +166,11 @@ router.post('/type', protect, admin, (req, res, next) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const cloudFrontUrl = getCloudFrontUrl(req.file.key);
+    const publicUrl = getPublicFileUrl(req.file.key);
     
     res.json({
       message: 'type logo uploaded successfully',
-      logo: cloudFrontUrl
+      logo: publicUrl
     });
   } catch (error) {
     console.error('Upload error:', error);

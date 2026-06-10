@@ -9,6 +9,7 @@ import { notificationAPI } from '../../api/notificationAPI';
 import LoginModal from '../auth/LoginModal';
 import AISearchComponent from '../AISearchComponent';
 import EnigmaLogo from '../EnigmaLogo';
+import { getUserDisplayName, getUserAvatarUrl, getUserInitial } from '../../utils/userDisplay';
 
 const DashboardLayout = ({ children }) => {
   const location = useLocation();
@@ -130,7 +131,8 @@ const DashboardLayout = ({ children }) => {
   const userType = user?.userType || 'BUYER';
   const isManufacturer = userType === 'MANUFACTURER' || userType === 'HYBRID';
   const isBuyer = userType === 'BUYER' || userType === 'HYBRID';
-  const displayName = user?.fullName || user?.companyName || 'User';
+  const displayName = getUserDisplayName(user);
+  const avatarUrl = getUserAvatarUrl(user);
   const planLabel = userType === 'BUYER' ? 'BUYER FREE' : getEffectivePlanType(user);
 
   const commonMenuItems = [
@@ -378,11 +380,11 @@ const DashboardLayout = ({ children }) => {
                 onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
                 className="flex items-center space-x-2 text-gray-700 hover:text-[#4881F8] transition-colors"
               >
-                {user?.profileImage ? (
-                  <img src={user.profileImage} alt={user?.fullName || 'User'} className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0" />
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {user?.fullName?.charAt(0) || 'U'}
+                    {getUserInitial(user)}
                   </div>
                 )}
                 {!isMobile && (
@@ -396,11 +398,11 @@ const DashboardLayout = ({ children }) => {
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-                    {user?.profileImage ? (
-                      <img src={user.profileImage} alt={user?.fullName || 'User'} className="w-10 h-10 rounded-full object-cover border border-gray-200 flex-shrink-0" />
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover border border-gray-200 flex-shrink-0" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
-                        {user?.fullName?.charAt(0) || 'U'}
+                        {getUserInitial(user)}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">

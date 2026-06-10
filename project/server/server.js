@@ -110,23 +110,23 @@ if (isDevelopment) {
   });
 }
 
-// Proxy CloudFront files to avoid CORS issues in development
+// Proxy S3 files in development to avoid CORS issues with CAD viewers
 if (isDevelopment) {
   const { createProxyMiddleware } = require('http-proxy-middleware');
-  
-  // Proxy all enigma/* paths through CloudFront
-  app.use('/enigma', createProxyMiddleware({
-    target: process.env.AWS_CLOUDFRONT_DOMAIN || 'https://d3l60mdhyx2j2v.cloudfront.net',
-    changeOrigin: true,
-    pathRewrite: {
-      '^/enigma': '/enigma'
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-      proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
-      proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type';
-    }
-  }));
+  const { getPublicBaseUrl } = require('./config/aws');
+  const s3Base = getPublicBaseUrl();
+
+  if (s3Base) {
+    app.use('/enigma', createProxyMiddleware({
+      target: s3Base,
+      changeOrigin: true,
+      onProxyRes: (proxyRes) => {
+        proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+        proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
+        proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type';
+      }
+    }));
+  }
 }
 
 // Routes - Enigma API
@@ -159,15 +159,28 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/files', require('./routes/fileRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes')); 
 
-// Fallback to local uploads rendering
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Local file storage (used when S3 IAM is unavailable)
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || process.env.FRONTEND_URL || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Health check route with environment info
 app.get('/api/health', (req, res) => {
+  let storage = 'local';
+  try {
+    const { getStorageMode } = require('./utils/s3Upload');
+    storage = getStorageMode();
+  } catch { /* ignore */ }
+
   res.json({
     status: 'OK',
     message: 'Server is running',
     environment: process.env.NODE_ENV || 'development',
+    storage,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0'
   });
@@ -218,13 +231,17 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const { probeS3WriteAccess } = require('./config/aws');
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(` Server running on port ${PORT}`);
   console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(` CORS enabled for: ${isDevelopment ? 'Development + Production URLs' : 'Production URL only'}`);
   console.log(`Database: ${process.env.MONGODB_URI ? 'Connected' : 'Not configured'}`);
-  
+  console.log(` API_URL for file URLs: ${process.env.API_URL || 'not set'}`);
+
+  await probeS3WriteAccess();
+
   if (isDevelopment) {
     console.log(` Development mode active`);
     console.log(` Local access: http://localhost:${PORT}`);
