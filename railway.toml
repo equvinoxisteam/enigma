@@ -1,6 +1,0 @@
-# Monorepo: set Root Directory per Railway service in the dashboard:
-#   API service  → project/server
-#   Web service  → project/ecotrade
-#
-# Each subdirectory has its own railway.toml + nixpacks.toml.
-# Do NOT add build/start commands here — they break subdirectory deploys.
