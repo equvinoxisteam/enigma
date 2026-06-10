@@ -10,6 +10,7 @@ import LoginModal from '../auth/LoginModal';
 import AISearchComponent from '../AISearchComponent';
 import EnigmaLogo from '../EnigmaLogo';
 import { getUserDisplayName, getUserAvatarUrl, getUserInitial } from '../../utils/userDisplay';
+import AuthenticatedImage from '../AuthenticatedImage';
 
 const DashboardLayout = ({ children }) => {
   const location = useLocation();
@@ -380,13 +381,16 @@ const DashboardLayout = ({ children }) => {
                 onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
                 className="flex items-center space-x-2 text-gray-700 hover:text-[#4881F8] transition-colors"
               >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {getUserInitial(user)}
-                  </div>
-                )}
+                <AuthenticatedImage
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                  fallback={
+                    <div className="w-8 h-8 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold flex-shrink-0">
+                      {getUserInitial(user)}
+                    </div>
+                  }
+                />
                 {!isMobile && (
                   <div className="text-left">
                     <span className="font-medium block leading-tight">{displayName}</span>
@@ -398,13 +402,16 @@ const DashboardLayout = ({ children }) => {
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover border border-gray-200 flex-shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
-                        {getUserInitial(user)}
-                      </div>
-                    )}
+                    <AuthenticatedImage
+                      src={avatarUrl}
+                      alt={displayName}
+                      className="w-10 h-10 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                      fallback={
+                        <div className="w-10 h-10 rounded-full bg-[#4881F8] flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
+                          {getUserInitial(user)}
+                        </div>
+                      }
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-800 truncate">{displayName}</p>
                       <p className="text-xs text-gray-500 truncate">{user?.email}</p>

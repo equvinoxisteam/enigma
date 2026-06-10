@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const { formatUserResponse } = require('../utils/userResponse');
 
 // @desc    Get user profile
 // @route   GET /api/profile
@@ -11,7 +12,7 @@ const getProfile = async (req, res) => {
 
     res.json({
       success: true,
-      data: user
+      data: formatUserResponse(user)
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -126,9 +127,11 @@ const updateProfile = async (req, res) => {
 
     await user.save();
 
+    const freshUser = await User.findById(user._id).select('-password -emailVerificationToken -passwordResetToken');
+
     res.json({
       success: true,
-      data: user
+      data: formatUserResponse(freshUser)
     });
   } catch (error) {
     console.error('Update profile error:', error);

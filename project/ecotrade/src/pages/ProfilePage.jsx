@@ -5,6 +5,7 @@ import { uploadAPI } from '../api/uploadAPI';
 import { useToast } from '../contexts/ToastContext';
 import { Building2, ShoppingCart, Factory, Save } from 'lucide-react';
 import { countries } from '../data/countries';
+import AuthenticatedImage from '../components/AuthenticatedImage';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -201,9 +202,10 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      const response = await profileAPI.update(formData);
+      const { email, ...profilePayload } = formData;
+      const response = await profileAPI.update(profilePayload);
       if (response.success) {
-        await updateUser();
+        await updateUser(response.data);
         showSuccess('Profile updated successfully!');
       }
     } catch (error) {
@@ -237,7 +239,13 @@ const ProfilePage = () => {
       const url = response?.data?.url || response?.url;
       if (!url) throw new Error('Upload response missing URL');
       setFormData((prev) => ({ ...prev, [field]: url }));
-      showSuccess(`${field === 'companyLogo' ? 'Company logo' : 'Company banner'} uploaded`);
+
+      const saveResponse = await profileAPI.update({ [field]: url });
+      if (saveResponse.success) {
+        await updateUser(saveResponse.data);
+      }
+
+      showSuccess(`${field === 'companyLogo' ? 'Company logo' : 'Company banner'} saved`);
     } catch (error) {
       showError(error.response?.data?.message || `Failed to upload ${field}`);
     } finally {
@@ -423,11 +431,12 @@ const ProfilePage = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
-                {formData.companyLogo ? (
-                  <img src={formData.companyLogo} alt="Company logo" className="h-20 w-20 object-cover rounded border mb-2" />
-                ) : (
-                  <div className="h-20 w-20 rounded border bg-gray-50 mb-2" />
-                )}
+                <AuthenticatedImage
+                  src={formData.companyLogo}
+                  alt="Company logo"
+                  className="h-20 w-20 object-cover rounded border mb-2"
+                  fallback={<div className="h-20 w-20 rounded border bg-gray-50 mb-2" />}
+                />
                 <input
                   type="file"
                   accept="image/*"
@@ -437,11 +446,12 @@ const ProfilePage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Company Banner</label>
-                {formData.companyBanner ? (
-                  <img src={formData.companyBanner} alt="Company banner" className="h-20 w-full object-cover rounded border mb-2" />
-                ) : (
-                  <div className="h-20 w-full rounded border bg-gray-50 mb-2" />
-                )}
+                <AuthenticatedImage
+                  src={formData.companyBanner}
+                  alt="Company banner"
+                  className="h-20 w-full object-cover rounded border mb-2"
+                  fallback={<div className="h-20 w-full rounded border bg-gray-50 mb-2" />}
+                />
                 <input
                   type="file"
                   accept="image/*"

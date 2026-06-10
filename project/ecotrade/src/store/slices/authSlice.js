@@ -34,16 +34,10 @@ export const getMe = createAsyncThunk(
   'auth/getMe',
   async (_, { rejectWithValue }) => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        throw new Error('No stored user data');
-      }
-      
-      const userData = JSON.parse(storedUser);
-      // Token will be automatically added by axios interceptor
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       const response = await authAPI.getMe();
-      // Preserve the token from localStorage
-      return { ...response, token: userData.token };
+      const token = storedUser.token || localStorage.getItem('token');
+      return { ...response, token };
     } catch (error) {
       // Only remove user if it's a 401 (unauthorized), not if it's a network error
       if (error.response?.status === 401) {
@@ -176,6 +170,17 @@ const authSlice = createSlice({
     },
     setSuccessMessage: (state, action) => {
       state.successMessage = action.payload;
+    },
+    setUser: (state, action) => {
+      const token = action.payload.token || state.user?.token || localStorage.getItem('token');
+      state.user = { ...action.payload, token };
+      state.isAuthenticated = true;
+      try {
+        localStorage.setItem('user', JSON.stringify(state.user));
+        if (token) localStorage.setItem('token', token);
+      } catch {
+        // ignore localStorage errors
+      }
     }
   },
   extraReducers: (builder) => {
@@ -321,5 +326,5 @@ const authSlice = createSlice({
   }
 });
 
-export const { logout, clearError, clearSuccessMessage, setError, setSuccessMessage, setUserWishlist } = authSlice.actions;
+export const { logout, clearError, clearSuccessMessage, setError, setSuccessMessage, setUserWishlist, setUser } = authSlice.actions;
 export default authSlice.reducer;

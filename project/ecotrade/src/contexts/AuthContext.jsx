@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getMe } from '../store/slices/authSlice'; // <-- 1. IMPORT getMe
-import { loginUser, registerUser, logout as logoutAction, clearError } from '../store/slices/authSlice';
+import { loginUser, registerUser, logout as logoutAction, clearError, setUser } from '../store/slices/authSlice';
 
 const AuthContext = createContext();
 
@@ -107,8 +107,12 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = async (userData) => {
     try {
-      // Refresh user data from server
-      await dispatch(getMe());
+      if (userData) {
+        const token = user?.token || JSON.parse(localStorage.getItem('user') || '{}').token || localStorage.getItem('token');
+        dispatch(setUser({ ...userData, token }));
+      } else {
+        await dispatch(getMe());
+      }
     } catch (error) {
       console.error('Error updating user data:', error);
     }
