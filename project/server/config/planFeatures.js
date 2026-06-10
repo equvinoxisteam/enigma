@@ -19,6 +19,7 @@ const FEATURE_KEYS = {
   VIDEO_SLIDES: 'VIDEO_SLIDES',
   CONCIERGE_DEALS: 'CONCIERGE_DEALS',
   AI_SEARCH: 'AI_SEARCH',
+  AI_SEARCH_LIMITED: 'AI_SEARCH_LIMITED',
   RFQ_REQUEST: 'RFQ_REQUEST',
   TOP_PLACEMENT: 'TOP_PLACEMENT',
   CORPORATE_RFQS: 'CORPORATE_RFQS'
@@ -34,9 +35,9 @@ const PLAN_FEATURES = {
   },
   [PLAN_TYPES.FREE]: {
     [FEATURE_KEYS.RFQ_POOL_VIEW]: true,
-    [FEATURE_KEYS.AI_SEARCH]: true,
+    [FEATURE_KEYS.AI_SEARCH_LIMITED]: true,
     [FEATURE_KEYS.CHAT_ACCESS]: true,
-    [FEATURE_KEYS.RFQ_RESPOND]: false, // Can't request/accept on free
+    [FEATURE_KEYS.RFQ_RESPOND]: false,
     [FEATURE_KEYS.INVITATION_RESPOND]: true
   },
   [PLAN_TYPES.STANDARD]: {
@@ -85,7 +86,6 @@ const hasFeature = (user, featureKey) => {
   const planType = getEffectivePlanType(user);
   const planHasFeature = Boolean(PLAN_FEATURES[planType]?.[featureKey]);
 
-  // Hybrid users always retain buyer-free capabilities plus their manufacturer plan.
   if (user?.userType === 'HYBRID') {
     const buyerHasFeature = Boolean(PLAN_FEATURES[PLAN_TYPES.BUYER_FREE]?.[featureKey]);
     return planHasFeature || buyerHasFeature;
@@ -94,10 +94,17 @@ const hasFeature = (user, featureKey) => {
   return planHasFeature;
 };
 
+const hasFullAISearch = (user) => hasFeature(user, FEATURE_KEYS.AI_SEARCH);
+
+const hasAnyAISearch = (user) =>
+  hasFeature(user, FEATURE_KEYS.AI_SEARCH) || hasFeature(user, FEATURE_KEYS.AI_SEARCH_LIMITED);
+
 module.exports = {
   PLAN_TYPES,
   FEATURE_KEYS,
   PLAN_FEATURES,
   getEffectivePlanType,
-  hasFeature
+  hasFeature,
+  hasFullAISearch,
+  hasAnyAISearch
 };

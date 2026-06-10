@@ -35,6 +35,11 @@ export const profileAPI = {
   changePassword: async (payload) => {
     const response = await axiosInstance.put('/api/profile/change-password', payload);
     return response.data;
+  },
+
+  toggleSavedManufacturer: async (manufacturerId) => {
+    const response = await axiosInstance.post('/api/profile/saved-manufacturers', { manufacturerId });
+    return response.data;
   }
 };
 

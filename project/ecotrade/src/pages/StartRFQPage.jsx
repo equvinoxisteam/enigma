@@ -17,8 +17,14 @@ const StartRFQPage = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const partTypeOptions = ['Gear', 'Pipe', 'Bracket', 'Housing', 'Shaft', 'Bearing', 'Valve', 'Connector', 'Mount', 'Cover', 'Other'];
+  const countryOptions = ['India', 'USA', 'Germany', 'China', 'UK', 'Japan', 'France', 'Italy', 'Canada', 'Australia', 'Other'];
+  const languageOptions = ['English', 'Hindi', 'German', 'Mandarin', 'French', 'Spanish', 'Japanese'];
+
   const [formData, setFormData] = useState({
     title: '',
+    description: '',
+    isCorporateRFQ: false,
     workpieces: [{
       mainFile: null,
       mainFileUrl: '',
@@ -102,7 +108,8 @@ const StartRFQPage = () => {
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      uploadFormData.append('type', type === 'main' ? 'stl' : type === 'nda' ? 'document' : 'extra');
+      const fileCategory = type === 'nda' ? 'document' : type === 'extra' ? 'extra' : uploadAPI.getFileTypeCategory(file);
+      uploadFormData.append('type', fileCategory);
 
       const response = await uploadAPI.uploadFile(uploadFormData, (percent) => {
         setUploadProgress(percent);
@@ -176,6 +183,8 @@ const StartRFQPage = () => {
     try {
       const payload = {
         title: formData.title || `RFQ - ${formData.workpieces[0].technology}`,
+        description: formData.description,
+        isCorporateRFQ: formData.isCorporateRFQ,
         workpieces: formData.workpieces.map(wp => ({
           mainFile: wp.mainFileUrl,
           extraFiles: wp.extraFiles,
@@ -284,6 +293,17 @@ const StartRFQPage = () => {
                         className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-[#4881F8] focus:bg-white rounded-2xl text-xl font-black outline-none transition-all shadow-inner"
                       />
                    </div>
+                   <div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Project Description</label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        rows={3}
+                        placeholder="Describe tolerances, finish requirements, application context..."
+                        className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-[#4881F8] focus:bg-white rounded-2xl font-bold outline-none transition-all shadow-inner"
+                      />
+                   </div>
                 </div>
 
                 {formData.workpieces.map((wp, index) => (
@@ -334,6 +354,40 @@ const StartRFQPage = () => {
                             />
                          </div>
                        ))}
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                       <div>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Part Type</label>
+                          <select
+                            value={wp.partType}
+                            onChange={(e) => handleWorkpieceChange(index, 'partType', e.target.value)}
+                            className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none appearance-none"
+                          >
+                            <option value="">Select type</option>
+                            {partTypeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={wp.quantity}
+                            onChange={(e) => handleWorkpieceChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                            className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none"
+                          />
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Extra Files (PDF/DWG)</label>
+                          <label className="flex items-center justify-center gap-2 px-6 py-5 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl font-black text-xs cursor-pointer hover:border-blue-400">
+                            <Upload size={16} /> Add files
+                            <input type="file" multiple accept=".pdf,.dwg,.dxf,.doc,.docx" className="hidden" onChange={(e) => Array.from(e.target.files).forEach((f) => handleFileUpload(f, 'extra', index))} />
+                          </label>
+                          {wp.extraFiles?.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-2">{wp.extraFiles.length} file(s) attached</p>
+                          )}
+                       </div>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8">
@@ -395,6 +449,58 @@ const StartRFQPage = () => {
 
                  <div className="grid md:grid-cols-2 gap-8">
                     <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Destination Country *</label>
+                        <select
+                          name="country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none appearance-none"
+                          required
+                        >
+                          <option value="">Select country</option>
+                          {countryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Region</label>
+                        <input
+                          type="text"
+                          name="region"
+                          value={formData.region}
+                          onChange={handleChange}
+                          placeholder="e.g. Maharashtra, Bavaria"
+                          className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none"
+                        />
+                    </div>
+                 </div>
+
+                 <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Communication Language</label>
+                        <select
+                          name="communicationLanguage"
+                          value={formData.communicationLanguage}
+                          onChange={handleChange}
+                          className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none appearance-none"
+                        >
+                          {languageOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Part Tracking ID</label>
+                        <input
+                          type="text"
+                          name="partTrackingId"
+                          value={formData.partTrackingId}
+                          onChange={handleChange}
+                          placeholder="Internal SKU / project code"
+                          className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none"
+                        />
+                    </div>
+                 </div>
+
+                 <div className="grid md:grid-cols-2 gap-8">
+                    <div>
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">RFQ Expiry</label>
                         <input
                           type="datetime-local"
@@ -402,6 +508,16 @@ const StartRFQPage = () => {
                           value={formData.rfqDeadline}
                           onChange={handleChange}
                           className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Acceptance Deadline</label>
+                        <input
+                          type="datetime-local"
+                          name="acceptanceDeadline"
+                          value={formData.acceptanceDeadline}
+                          onChange={handleChange}
+                          className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-black outline-none"
                         />
                     </div>
                     <div>
@@ -415,6 +531,59 @@ const StartRFQPage = () => {
                         />
                     </div>
                  </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Request Justification</label>
+                    <textarea
+                      name="requestJustification"
+                      value={formData.requestJustification}
+                      onChange={handleChange}
+                      rows={2}
+                      placeholder="Why this RFQ is being issued, quality expectations..."
+                      className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-bold outline-none"
+                    />
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Notes for Manufacturers</label>
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleChange}
+                      rows={2}
+                      placeholder="Packaging, inspection, or delivery notes..."
+                      className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-blue-400 rounded-2xl font-bold outline-none"
+                    />
+                 </div>
+
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">NDA Document (optional)</label>
+                    {formData.ndaFileUrl ? (
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
+                        <FileText size={20} className="text-blue-500" />
+                        <span className="text-sm font-bold flex-1">NDA uploaded</span>
+                        <button type="button" onClick={() => handleRemoveFile('nda')} className="text-red-500"><X size={18} /></button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-3 px-8 py-5 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 font-black text-sm">
+                        <Upload size={18} /> Upload NDA (PDF)
+                        <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => handleFileUpload(e.target.files[0], 'nda')} />
+                      </label>
+                    )}
+                 </div>
+
+                 <label className="flex items-center gap-3 p-4 bg-purple-50 border border-purple-100 rounded-2xl cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isCorporateRFQ}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, isCorporateRFQ: e.target.checked }))}
+                      className="w-5 h-5"
+                    />
+                    <div>
+                      <p className="font-black text-sm text-purple-900">Corporate / Enterprise RFQ</p>
+                      <p className="text-xs text-purple-600">Visible only to Enterprise-tier manufacturers with priority matching</p>
+                    </div>
+                 </label>
 
                  <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Compliance Certificates</label>

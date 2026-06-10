@@ -111,7 +111,11 @@ const rfqSchema = new mongoose.Schema({
   notes: {
     type: String
   },
-  
+  isCorporateRFQ: {
+    type: Boolean,
+    default: false
+  },
+
   // NDA
   ndaFile: {
     type: String // NDA file URL, only visible to selected manufacturer

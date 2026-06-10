@@ -47,7 +47,7 @@ const PricingPage = () => {
         'Basic discovery tools'
       ],
       cta: 'Upgrade Now',
-      popular: true,
+      popular: false,
       color: 'blue'
     },
     {
@@ -66,7 +66,7 @@ const PricingPage = () => {
         'Priority support'
       ],
       cta: 'Upgrade Now',
-      popular: false,
+      popular: true,
       color: 'indigo'
     },
     {
@@ -205,9 +205,12 @@ const PricingPage = () => {
             <p className="text-gray-300 text-sm font-medium mb-6">
               Get dedicated support for tender-scale procurement, custom API integrations, and white-glove onboarding for your team.
             </p>
-            <button className="w-full py-4 bg-white text-[#01364a] rounded-xl font-black hover:bg-gray-100 transition-colors">
+            <a
+              href="mailto:support@equvinoxis.com?subject=Enterprise%20Architecture%20Team%20Inquiry"
+              className="block w-full py-4 bg-white text-[#01364a] rounded-xl font-black hover:bg-gray-100 transition-colors text-center"
+            >
               Talk to Architecture Team
-            </button>
+            </a>
           </div>
         </div>
         <div className="absolute top-0 right-0 p-20 opacity-10 pointer-events-none">

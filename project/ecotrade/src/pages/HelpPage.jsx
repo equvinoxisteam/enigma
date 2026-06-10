@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { HelpCircle, ChevronDown, ChevronUp, Mail, FileText, ExternalLink } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { contactAPI } from '../api/contactAPI';
 
 const HelpPage = () => {
+  const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const [submitting, setSubmitting] = useState(false);
   const [openFAQ, setOpenFAQ] = useState(null);
   const [contactForm, setContactForm] = useState({
     subject: '',
@@ -70,7 +76,7 @@ const HelpPage = () => {
         },
         {
           q: 'Are there any fees?',
-          a: 'Free plan users can create up to 5 RFQs per month. Pro and Enterprise plans offer unlimited RFQs with additional features. See the Pricing page for details.'
+          a: 'Buyer accounts are always free with unlimited RFQ publishing. Manufacturer plans (Free, Standard, Pro, Enterprise) control visibility, AI matching, and RFQ response access. See the Pricing page for details.'
         }
       ]
     }
@@ -80,11 +86,23 @@ const HelpPage = () => {
     setOpenFAQ(openFAQ === index ? null : index);
   };
 
-  const handleContactSubmit = (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Implement contact form submission
-    alert('Support request submitted! We will get back to you soon.');
-    setContactForm({ subject: '', description: '', attachment: null });
+    setSubmitting(true);
+    try {
+      await contactAPI.submit({
+        name: user?.fullName || user?.companyName || 'User',
+        email: user?.email,
+        subject: contactForm.subject,
+        message: contactForm.description
+      });
+      showSuccess('Support request submitted! We will get back to you soon.');
+      setContactForm({ subject: '', description: '', attachment: null });
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to submit support request');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   let questionIndex = 0;

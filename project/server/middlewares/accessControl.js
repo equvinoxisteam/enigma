@@ -23,7 +23,23 @@ const requireFeature = (featureKey) => (req, res, next) => {
   next();
 };
 
+const requireAnyFeature = (...featureKeys) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authorized' });
+  }
+
+  const allowed = featureKeys.some((key) => hasFeature(req.user, key));
+  if (!allowed) {
+    return res.status(403).json({
+      message: 'Your current plan does not include this feature'
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   requireUserTypes,
-  requireFeature
+  requireFeature,
+  requireAnyFeature
 };

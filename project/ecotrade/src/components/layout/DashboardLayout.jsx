@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check
+  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check, Shield
 } from 'lucide-react';
+import { getEffectivePlanType } from '../../config/planFeatures';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationAPI } from '../../api/notificationAPI';
 import LoginModal from '../auth/LoginModal';
@@ -129,6 +130,8 @@ const DashboardLayout = ({ children }) => {
   const userType = user?.userType || 'BUYER';
   const isManufacturer = userType === 'MANUFACTURER' || userType === 'HYBRID';
   const isBuyer = userType === 'BUYER' || userType === 'HYBRID';
+  const displayName = user?.fullName || user?.companyName || 'User';
+  const planLabel = userType === 'BUYER' ? 'BUYER FREE' : getEffectivePlanType(user);
 
   const commonMenuItems = [
     { label: 'My Feed', path: '/dashboard', hint: 'Dashboard overview and activity' },
@@ -259,6 +262,17 @@ const DashboardLayout = ({ children }) => {
               )}
               <div className="space-y-1">
                 {renderNavLinks(supportMenuItems)}
+                {user?.isAdmin && (
+                  <Link
+                    to="/admin"
+                    title="Admin panel"
+                    className={`block ${sidebarOpen ? 'px-4' : 'px-2 text-center'} py-2.5 rounded-lg transition-colors text-sm font-medium text-amber-300 hover:bg-gray-800 hover:text-amber-200`}
+                  >
+                    {sidebarOpen ? (
+                      <span className="flex items-center gap-2"><Shield size={14} /> Admin Panel</span>
+                    ) : 'A'}
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className={`w-full block ${sidebarOpen ? 'px-4 text-left' : 'px-2 text-center'} py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors`}
@@ -372,7 +386,10 @@ const DashboardLayout = ({ children }) => {
                   </div>
                 )}
                 {!isMobile && (
-                  <span className="font-medium">{user?.fullName || 'User'}</span>
+                  <div className="text-left">
+                    <span className="font-medium block leading-tight">{displayName}</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">{planLabel}</span>
+                  </div>
                 )}
               </button>
 
@@ -387,10 +404,10 @@ const DashboardLayout = ({ children }) => {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{user?.fullName || 'User'}</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{displayName}</p>
                       <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                       <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-[#4881F8]/10 text-[#4881F8] font-medium">
-                        {user?.userType || 'BUYER'}
+                        {user?.userType || 'BUYER'} · {planLabel}
                       </span>
                     </div>
                   </div>

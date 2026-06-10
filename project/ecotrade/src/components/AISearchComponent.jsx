@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Sparkles, X, Loader2, ArrowRight, User, FileText, Upload, Globe, Package, Zap, ChevronRight, Shield } from 'lucide-react';
+import { Search, Sparkles, X, Loader2, ArrowRight, User, FileText, Upload, Globe, Package, Zap, ChevronRight, Shield, Box } from 'lucide-react';
 import { searchAPI } from '../api/searchAPI';
+import { uploadAPI } from '../api/uploadAPI';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { hasFullAISearch, canUseAI } from '../config/planFeatures';
 
 const AISearchModal = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('text'); // text, model
+  const { user } = useAuth();
+  const fullAI = hasFullAISearch(user);
+  const aiAllowed = canUseAI(user);
+  const [activeTab, setActiveTab] = useState('text');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -48,23 +54,40 @@ const AISearchModal = ({ onClose }) => {
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setIsUploading(true);
-    // Simulate STL Extraction
-    setTimeout(() => {
-      setIsUploading(false);
+    if (!fullAI) {
       setResults({
-        suggestions: `I've analyzed your ${file.name} model. It looks like a high-precision CNC part with internal threads. Here are top matching manufacturers and similar RFQs.`,
-        rfqs: recommendations.slice(0, 3),
-        manufacturers: [
-           { _id: 'm1', companyName: 'Precision Dynamics CNC', country: 'Germany', matchScore: 98, isVerified: true },
-           { _id: 'm2', companyName: 'AeroTech Systems', country: 'USA', matchScore: 94, isVerified: true }
-        ]
+        suggestions: 'STL Model Match requires Standard plan or higher. Upgrade for full AI matching.',
+        rfqs: [],
+        manufacturers: [],
+        isLimitedAI: true
       });
-    }, 2500);
+      return;
+    }
+
+    setIsUploading(true);
+    setResults(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await uploadAPI.uploadFile(formData);
+
+      const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ');
+      const query = `CNC precision manufacturing ${baseName}`;
+      const resp = await searchAPI.aiSearch(query);
+      setResults({
+        ...resp.data,
+        suggestions: `Analyzed ${file.name} — matched manufacturers ranked by plan tier and capabilities.`,
+        modelFile: file.name
+      });
+    } catch (err) {
+      console.error('Model match failed', err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -86,12 +109,13 @@ const AISearchModal = ({ onClose }) => {
             <Sparkles size={16} /> AI Text Search
           </button>
           <button 
-            onClick={() => setActiveTab('model')}
+            onClick={() => fullAI ? setActiveTab('model') : null}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black transition-all ${
-              activeTab === 'model' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+              activeTab === 'model' ? 'bg-white text-blue-600 shadow-sm' : fullAI ? 'text-gray-400 hover:text-gray-600' : 'text-gray-300 cursor-not-allowed'
             }`}
+            title={fullAI ? 'Upload STL for model matching' : 'Upgrade to Standard+ for STL model match'}
           >
-            <Box size={16} /> Model Match (STL)
+            <Box size={16} /> Model Match (STL){!fullAI && ' 🔒'}
           </button>
         </div>
 

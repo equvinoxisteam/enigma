@@ -76,10 +76,23 @@ exports.createNotification = async ({ userId, type, title, message, link, metada
   try {
     const notification = await Notification.create({ userId, type, title, message, link, metadata });
     
-    // Send email notification
+    // Send email notification (respect user preferences)
     try {
       const user = await User.findById(userId);
-      if (user && user.email) {
+      const emailPrefs = user?.notificationSettings?.email || {};
+      const typeToPref = {
+        RFQ_CREATED: 'statusChanges',
+        RFQ_REQUEST: 'rfqRequests',
+        RFQ_ACCEPTED: 'rfqRequests',
+        INVITATION: 'invitations',
+        CHAT_MESSAGE: 'chatMessages',
+        SHIPMENT: 'shipments',
+        STATUS_CHANGE: 'statusChanges'
+      };
+      const prefKey = typeToPref[type] || 'statusChanges';
+      const emailEnabled = emailPrefs[prefKey] !== false;
+
+      if (user && user.email && emailEnabled) {
         const mailOptions = {
           from: `"${process.env.APP_NAME || 'Enigma'}" <${process.env.GMAIL_USER}>`,
           to: user.email,

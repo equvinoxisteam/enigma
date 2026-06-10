@@ -1,5 +1,18 @@
 const RFQ = require('../models/RFQ');
 const User = require('../models/User');
+const { hasFeature, FEATURE_KEYS } = require('../config/planFeatures');
+
+const PLAN_RANK_SWITCH = {
+  $switch: {
+    branches: [
+      { case: { $eq: ['$subscription.planType', 'ENTERPRISE'] }, then: 100 },
+      { case: { $eq: ['$subscription.planType', 'PRO'] }, then: 80 },
+      { case: { $eq: ['$subscription.planType', 'STANDARD'] }, then: 60 },
+      { case: { $eq: ['$subscription.planType', 'FREE'] }, then: 0 }
+    ],
+    default: 0
+  }
+};
 
 // @desc    Search RFQs using MongoDB
 // @route   GET /api/search/rfqs
@@ -201,19 +214,7 @@ const searchManufacturersController = async (req, res) => {
     const manufacturers = await User.aggregate([
       { $match: query },
       {
-        $addFields: {
-          planRank: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$subscription.planType", "ENTERPRISE"] }, then: 100 },
-                { case: { $eq: ["$subscription.planType", "PRO"] }, then: 80 },
-                { case: { $eq: ["$subscription.planType", "STANDARD"] }, then: 60 },
-                { case: { $eq: ["$subscription.planType", "FREE"] }, then: 0 }
-              ],
-              default: 0
-            }
-          }
-        }
+        $addFields: { planRank: PLAN_RANK_SWITCH }
       },
       { $sort: { planRank: -1, createdAt: -1 } },
       { $skip: skip },
@@ -281,10 +282,18 @@ const getRecommendationsController = async (req, res) => {
       }
     }
 
+    const isLimitedAI = !hasFeature(req.user, FEATURE_KEYS.AI_SEARCH)
+      && hasFeature(req.user, FEATURE_KEYS.AI_SEARCH_LIMITED);
+    const recLimit = isLimitedAI ? 2 : 6;
+
+    if (!hasFeature(req.user, FEATURE_KEYS.CORPORATE_RFQS)) {
+      query.isCorporateRFQ = { $ne: true };
+    }
+
     const recommendations = await RFQ.find(query)
       .populate('buyerId', 'companyName country')
-      .sort({ createdAt: -1 })
-      .limit(6)
+      .sort({ isCorporateRFQ: -1, createdAt: -1 })
+      .limit(recLimit)
       .lean();
 
     res.json({
@@ -307,14 +316,15 @@ const aiSearchController = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Search query is required' });
     }
 
-    const normalizedQuery = query.toLowerCase();
-    
-    // Identify keywords for technology and materials
-    const techs = ['cnc', '3d printing', 'milling', 'turning', 'sheet metal', 'welding', 'assembly', 'injection molding'];
-    const detectedTechs = techs.filter(t => normalizedQuery.includes(t.toLowerCase()))
-                               .map(t => t.toUpperCase().replace(' ', '_'));
+    const isLimitedAI = !hasFeature(req.user, FEATURE_KEYS.AI_SEARCH)
+      && hasFeature(req.user, FEATURE_KEYS.AI_SEARCH_LIMITED);
+    const resultLimit = isLimitedAI ? 2 : 5;
 
-    // 1. Search RFQs
+    const normalizedQuery = query.toLowerCase();
+    const techs = ['cnc', '3d printing', 'milling', 'turning', 'sheet metal', 'welding', 'assembly', 'injection molding'];
+    const detectedTechs = techs.filter((t) => normalizedQuery.includes(t.toLowerCase()))
+      .map((t) => t.toUpperCase().replace(' ', '_'));
+
     let rfqQuery = {
       status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] },
       $or: [
@@ -326,29 +336,44 @@ const aiSearchController = async (req, res) => {
       rfqQuery.$or.push({ 'workpieces.technology': { $in: detectedTechs } });
     }
 
-    const rfqs = await RFQ.find(rfqQuery).limit(5).lean();
+    const rfqs = await RFQ.find(rfqQuery)
+      .sort({ isCorporateRFQ: -1, createdAt: -1 })
+      .limit(resultLimit)
+      .lean();
 
-    // 2. Search Manufacturers
     let mfrQuery = {
       userType: { $in: ['MANUFACTURER', 'HYBRID'] },
       manufacturerStatus: 'ACTIVE',
       $or: [
         { companyName: { $regex: query, $options: 'i' } },
-        { 'manufacturerSettings.partTypes': { $regex: query, $options: 'i' } }
+        { 'manufacturerSettings.partTypes': { $regex: query, $options: 'i' } },
+        { primaryMaterials: { $regex: query, $options: 'i' } }
       ]
     };
     if (detectedTechs.length > 0) {
       mfrQuery.$or.push({ 'manufacturerSettings.technologies': { $in: detectedTechs } });
+      mfrQuery.$or.push({ manufacturingTypes: { $in: detectedTechs } });
     }
 
-    const manufacturers = await User.find(mfrQuery).select('-password').limit(5).lean();
+    const manufacturers = await User.aggregate([
+      { $match: mfrQuery },
+      { $addFields: { planRank: PLAN_RANK_SWITCH } },
+      { $sort: { planRank: -1, createdAt: -1 } },
+      { $limit: resultLimit },
+      { $project: { password: 0 } }
+    ]);
 
     res.json({
       success: true,
       data: {
         rfqs,
         manufacturers,
-        suggestions: detectedTechs.length > 0 ? `Showing results for ${detectedTechs.join(', ')} capabilities.` : null
+        isLimitedAI,
+        suggestions: detectedTechs.length > 0
+          ? `Showing results for ${detectedTechs.join(', ')} capabilities.`
+          : isLimitedAI
+            ? 'Limited AI matching on Free plan — upgrade for full results and STL model match.'
+            : null
       }
     });
   } catch (error) {

@@ -212,6 +212,11 @@ const RFQPoolPage = () => {
                   <span className="px-3 py-1 bg-gray-50 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-100">
                     RFQ #{rfq._id.toString().slice(-6)}
                   </span>
+                  {rfq.isCorporateRFQ && (
+                    <span className="px-3 py-1 bg-purple-50 text-purple-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-purple-100">
+                      Corporate RFQ
+                    </span>
+                  )}
                   {rfq.matchScore != null && (
                     <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-green-100">
                       {rfq.matchScore}% Match
@@ -254,7 +259,7 @@ const RFQPoolPage = () => {
               {/* Feature Tip for non-paid */}
               {!canRequest && (
                 <div className="absolute top-4 right-8 flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                  <AlertCircle size={12} /> Pro Feature
+                  <AlertCircle size={12} /> Standard+ Required
                 </div>
               )}
             </div>

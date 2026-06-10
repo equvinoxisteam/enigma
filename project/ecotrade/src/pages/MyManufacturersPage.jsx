@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Factory, Star, MapPin, CheckCircle, Mail, Eye, X } from 'lucide-react';
 import { invitationAPI } from '../api/invitationAPI';
 import { rfqAPI } from '../api/rfqAPI';
+import { profileAPI } from '../api/profileAPI';
 import { useToast } from '../contexts/ToastContext';
 
 const MyManufacturersPage = () => {
@@ -94,8 +95,13 @@ const MyManufacturersPage = () => {
   };
 
   const toggleStar = async (manufacturerId) => {
-    // TODO: Implement save/unsave manufacturer API
-    showSuccess('Manufacturer saved to favorites');
+    try {
+      const response = await profileAPI.toggleSavedManufacturer(manufacturerId);
+      showSuccess(response.saved ? 'Manufacturer saved to favorites' : 'Removed from favorites');
+      fetchManufacturers();
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to update favorites');
+    }
   };
 
   return (

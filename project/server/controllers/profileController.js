@@ -298,12 +298,57 @@ const changePassword = async (req, res) => {
   }
 };
 
+// @desc    Save or unsave a manufacturer (buyer favorites)
+// @route   POST /api/profile/saved-manufacturers
+// @access  Private (Buyer/Hybrid)
+const toggleSavedManufacturer = async (req, res) => {
+  try {
+    const { manufacturerId } = req.body;
+    if (!manufacturerId) {
+      return res.status(400).json({ message: 'manufacturerId is required' });
+    }
+
+    if (!['BUYER', 'HYBRID'].includes(req.user.userType)) {
+      return res.status(403).json({ message: 'Only buyers can save manufacturers' });
+    }
+
+    const user = await User.findById(req.user._id);
+    const mfr = await User.findById(manufacturerId);
+    if (!mfr || !['MANUFACTURER', 'HYBRID'].includes(mfr.userType)) {
+      return res.status(404).json({ message: 'Manufacturer not found' });
+    }
+
+    const saved = user.savedManufacturers.map((id) => id.toString());
+    const isSaved = saved.includes(manufacturerId.toString());
+
+    if (isSaved) {
+      user.savedManufacturers = user.savedManufacturers.filter(
+        (id) => id.toString() !== manufacturerId.toString()
+      );
+    } else {
+      user.savedManufacturers.push(manufacturerId);
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      saved: !isSaved,
+      data: user.savedManufacturers
+    });
+  } catch (error) {
+    console.error('Toggle saved manufacturer error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   getPublicManufacturerProfile,
   getSettings,
   updateSettings,
-  changePassword
+  changePassword,
+  toggleSavedManufacturer
 };
 

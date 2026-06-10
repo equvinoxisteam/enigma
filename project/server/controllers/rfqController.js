@@ -3,13 +3,14 @@ const ManufacturerRequest = require('../models/ManufacturerRequest');
 const Invitation = require('../models/Invitation');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
+const { hasFeature, FEATURE_KEYS } = require('../config/planFeatures');
 
 // @desc    Create new RFQ
 // @route   POST /api/rfqs
 // @access  Private (Buyer/Hybrid)
 const createRFQ = async (req, res) => {
   try {
-    const { title, workpieces, requirements, status = 'DRAFT', ndaFile } = req.body;
+    const { title, description, workpieces, requirements, status = 'DRAFT', ndaFile, isCorporateRFQ } = req.body;
     const buyerId = req.user._id;
 
     // Validate user role
@@ -20,9 +21,11 @@ const createRFQ = async (req, res) => {
     const rfqData = {
       buyerId,
       title,
+      description: description || requirements?.description || '',
       status,
       workpieces: workpieces || [],
       ndaFile: ndaFile || '',
+      isCorporateRFQ: Boolean(isCorporateRFQ || requirements?.isCorporateRFQ),
       ...requirements
     };
 
@@ -191,6 +194,11 @@ const getRFQPool = async (req, res) => {
       ];
     }
 
+    // Corporate RFQs visible only to Enterprise manufacturers
+    if (!hasFeature(req.user, FEATURE_KEYS.CORPORATE_RFQS)) {
+      query.isCorporateRFQ = { $ne: true };
+    }
+
     // Exclude RFQs already requested by this manufacturer
     const existingRequests = await ManufacturerRequest.find({
       manufacturerId: req.user._id
@@ -200,10 +208,14 @@ const getRFQPool = async (req, res) => {
       query._id = { $nin: excludedIds };
     }
 
+    const sortOrder = hasFeature(req.user, FEATURE_KEYS.CORPORATE_RFQS)
+      ? { isCorporateRFQ: -1, createdAt: -1 }
+      : { createdAt: -1 };
+
     const skip = (page - 1) * limit;
     const rfqs = await RFQ.find(query)
       .populate('buyerId', 'companyName country region industryVertical')
-      .sort({ createdAt: -1 })
+      .sort(sortOrder)
       .skip(skip)
       .limit(parseInt(limit));
 

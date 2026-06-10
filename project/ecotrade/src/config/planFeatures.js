@@ -19,6 +19,7 @@ export const FEATURE_KEYS = {
   VIDEO_SLIDES: 'VIDEO_SLIDES',
   CONCIERGE_DEALS: 'CONCIERGE_DEALS',
   AI_SEARCH: 'AI_SEARCH',
+  AI_SEARCH_LIMITED: 'AI_SEARCH_LIMITED',
   RFQ_REQUEST: 'RFQ_REQUEST',
   TOP_PLACEMENT: 'TOP_PLACEMENT',
   CORPORATE_RFQS: 'CORPORATE_RFQS'
@@ -34,9 +35,9 @@ export const PLAN_FEATURES = {
   },
   [PLAN_TYPES.FREE]: {
     [FEATURE_KEYS.RFQ_POOL_VIEW]: true,
-    [FEATURE_KEYS.AI_SEARCH]: true,
+    [FEATURE_KEYS.AI_SEARCH_LIMITED]: true,
     [FEATURE_KEYS.CHAT_ACCESS]: true,
-    [FEATURE_KEYS.RFQ_RESPOND]: false, // Can't request/accept on free
+    [FEATURE_KEYS.RFQ_RESPOND]: false,
     [FEATURE_KEYS.INVITATION_RESPOND]: true
   },
   [PLAN_TYPES.STANDARD]: {
@@ -94,3 +95,8 @@ export const hasFeature = (user, featureKey) => {
 
   return planHasFeature;
 };
+
+export const hasFullAISearch = (user) => hasFeature(user, FEATURE_KEYS.AI_SEARCH);
+
+export const canUseAI = (user) =>
+  hasFeature(user, FEATURE_KEYS.AI_SEARCH) || hasFeature(user, FEATURE_KEYS.AI_SEARCH_LIMITED);
