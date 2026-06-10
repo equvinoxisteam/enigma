@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Sparkles, X, Loader2, ArrowRight, User, FileText, Upload, Globe, Package, Zap, ChevronRight, Shield, Box } from 'lucide-react';
+import { Search, Sparkles, X, Loader2, ArrowRight, User, FileText, Upload, Globe, Package, Zap, ChevronRight, Shield } from 'lucide-react';
 import { searchAPI } from '../api/searchAPI';
 import { uploadAPI } from '../api/uploadAPI';
 import { Link } from 'react-router-dom';
