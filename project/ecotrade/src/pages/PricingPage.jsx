@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { authAPI } from '../api/authAPI';
-import { Check, Info, Shield, Zap, Sparkles, Building, Play, Star, ArrowRight, MessageSquare } from 'lucide-react';
+import { Check, Info, Shield, Zap, Building, Play, Star, ArrowRight, MessageSquare } from 'lucide-react';
 import Button from '../components/ui/Button';
 
 const PricingPage = () => {

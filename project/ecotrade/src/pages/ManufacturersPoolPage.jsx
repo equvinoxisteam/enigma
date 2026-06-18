@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Filter, Factory, MapPin, Star, Mail, Eye, Shield, CheckCircle, Zap, Sparkles, ChevronRight, Info, Award, Lock, Globe } from 'lucide-react';
+import { Search, Filter, Factory, MapPin, Star, Mail, Eye, Shield, CheckCircle, Zap, ChevronRight, Info, Award, Lock, Globe } from 'lucide-react';
+import AIIcon from '../components/icons/AIIcon';
 import { hasFeature, FEATURE_KEYS, PLAN_TYPES, getEffectivePlanType } from '../config/planFeatures';
 import { invitationAPI } from '../api/invitationAPI';
 import { rfqAPI } from '../api/rfqAPI';
@@ -124,7 +125,7 @@ const ManufacturersPoolPage = () => {
              <div className="px-5 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100">
                 Supply Chain Verified
              </div>
-             <Sparkles size={18} className="text-yellow-400" />
+             <CheckCircle size={18} className="text-emerald-500" />
           </div>
           <h1 className="text-6xl font-black text-[#01364a] tracking-tighter mb-4">Global Discovery</h1>
           <p className="text-gray-400 font-bold text-xl max-w-2xl">Connect with high-performance manufacturing partners audited for precision and reliability.</p>
@@ -132,7 +133,7 @@ const ManufacturersPoolPage = () => {
         
         <div className="bg-[#01364a] text-white p-8 rounded-[3rem] shadow-2xl flex items-center gap-6 group hover:bg-black transition-all cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('open-ai-search'))}>
            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 group-hover:rotate-12 transition-transform">
-             <Sparkles size={28} />
+             <AIIcon size={28} />
            </div>
            <div>
              <p className="font-black text-lg tracking-tight">AI Source Engine</p>

@@ -4,8 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   FileText, Factory, CheckCircle, BarChart3, PlusCircle, 
   Clock, Package, Users, TrendingUp, AlertCircle, ArrowRight,
-  Sparkles, Zap, Search
+  Zap, Search
 } from 'lucide-react';
+import AIIcon from '../components/icons/AIIcon';
 import { rfqAPI } from '../api/rfqAPI';
 import { searchAPI } from '../api/searchAPI';
 import { getUserDisplayName } from '../utils/userDisplay';
@@ -155,7 +156,7 @@ const DashboardPage = () => {
               <div className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100">
                 AI Matchmaking Active
               </div>
-              <Sparkles size={18} className="text-yellow-400" />
+              <AIIcon size={18} className="text-[#4881F8]" />
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#01364a] mb-3 tracking-tighter leading-tight sm:leading-none">Find anything with Enigma AI</h2>
             <p className="text-gray-500 font-bold text-base sm:text-lg max-w-xl">
@@ -170,9 +171,6 @@ const DashboardPage = () => {
             AI Search
           </button>
           
-          <div className="absolute right-[-20px] bottom-[-20px] opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-700">
-            <Sparkles size={240} />
-          </div>
         </div>
       </div>
 
@@ -324,14 +322,11 @@ const DashboardPage = () => {
 
       {isManufacturer && newMatchingRFQs.length > 0 && (
         <div className="bg-gradient-to-br from-[#01364a] to-[#044c66] rounded-3xl p-8 mb-8 text-white shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform">
-            <Sparkles size={120} />
-          </div>
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center">
-                  <Sparkles className="text-yellow-400" size={24} />
+                  <AIIcon className="text-blue-200" size={24} />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black tracking-tight">AI Tailored for You</h2>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Sparkles, X, Loader2, ArrowRight, User, FileText, Upload, Globe, Package, Zap, ChevronRight, Shield } from 'lucide-react';
+import { Search, X, Loader2, ArrowRight, User, FileText, Upload, Globe, Package, Zap, ChevronRight, Shield } from 'lucide-react';
+import AIIcon from './icons/AIIcon';
 import { searchAPI } from '../api/searchAPI';
 import { uploadAPI } from '../api/uploadAPI';
 import { Link } from 'react-router-dom';
@@ -106,7 +107,7 @@ const AISearchModal = ({ onClose }) => {
               activeTab === 'text' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            <Sparkles size={16} /> <span className="truncate">AI Search</span>
+            <AIIcon size={16} /> <span className="truncate">AI Search</span>
           </button>
           <button 
             onClick={() => fullAI ? setActiveTab('model') : null}
@@ -235,13 +236,12 @@ const AISearchModal = ({ onClose }) => {
                     <div className="relative z-10">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center">
-                          <Sparkles className="text-yellow-400" size={20} />
+                          <AIIcon className="text-blue-200" size={20} />
                         </div>
                         <h4 className="font-black text-lg">AI Analysis</h4>
                       </div>
                       <p className="text-lg font-bold leading-snug text-blue-50 opacity-90">{results.suggestions}</p>
                     </div>
-                    <Sparkles className="absolute right-[-20px] bottom-[-20px] opacity-10" size={120} />
                  </div>
                )}
 

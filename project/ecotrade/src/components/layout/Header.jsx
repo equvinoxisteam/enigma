@@ -11,13 +11,13 @@ import {
   LogOut,
   Settings,
   Package,
-  Sparkles,
   Layers,
   Users,
   Compass
 } from "lucide-react";
 import Button from "../ui/Button";
 import AISearchComponent from "../AISearchComponent";
+import AIIcon from "../icons/AIIcon";
 
 const Header = () => {
   const headerRef = useRef(null);
@@ -108,7 +108,7 @@ const Header = () => {
                 onClick={() => setIsAISearchOpen(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all group"
               >
-                <Sparkles size={18} className="group-hover:rotate-12 transition-transform" />
+                <AIIcon size={18} className="group-hover:rotate-12 transition-transform" />
                 <span className="hidden sm:inline">AI Search</span>
               </button>
 

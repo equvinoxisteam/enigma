@@ -7,7 +7,7 @@ import { uploadAPI } from '../api/uploadAPI';
 import CADFileViewer from '../components/CADFileViewer';
 import { getStlDimensionsFromFile } from '../utils/stlDimensions';
 import { getFileExtension } from '../utils/fileUtils';
-import { ArrowLeft, ArrowRight, Upload, X, File, FileText, Save, Box, Info, Sparkles, Shield, Zap, Globe } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload, X, File, FileText, Save, Box, Info, Send, Shield, Zap, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 
 const StartRFQPage = () => {
@@ -655,7 +655,7 @@ const StartRFQPage = () => {
                    {activeTab === 'workpieces' ? (
                       <>Next Protocol <ArrowRight size={18} /></>
                    ) : (
-                      <>{loading ? 'Initializing Build...' : 'Publish RFQ to Pool'} <Sparkles size={18} /></>
+                      <>{loading ? 'Initializing Build...' : 'Publish RFQ to Pool'} <Send size={18} /></>
                    )}
                  </button>
                </div>

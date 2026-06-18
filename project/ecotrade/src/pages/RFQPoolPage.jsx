@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { rfqAPI } from '../api/rfqAPI';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Filter, FileText, MapPin, Calendar, Eye, Box, Info, Sparkles, ChevronRight, AlertCircle, Shield, Zap, Globe } from 'lucide-react';
+import { Search, Filter, FileText, MapPin, Calendar, Eye, Box, Info, ChevronRight, AlertCircle, Shield, Zap, Globe } from 'lucide-react';
+import AIIcon from '../components/icons/AIIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature, FEATURE_KEYS } from '../config/planFeatures';
 import Button from '../components/ui/Button';
@@ -98,7 +99,7 @@ const RFQPoolPage = () => {
             onClick={() => window.dispatchEvent(new CustomEvent('open-ai-search'))}
             className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-500/20 hover:scale-105 transition-all"
           >
-            <Sparkles size={18} />
+            <AIIcon size={18} />
             AI Smart Search
           </button>
           <button 

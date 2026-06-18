@@ -263,7 +263,6 @@ const ManufacturerProfilePage = () => {
                    <MessageSquare size={18} /> Send Message
                  </button>
               </div>
-              <Sparkles className="absolute right-[-10px] top-[-10px] opacity-20" size={100} />
            </div>
         </div>
       </div>
