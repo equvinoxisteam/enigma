@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { rfqAPI } from '../api/rfqAPI';
 import { useToast } from '../contexts/ToastContext';
-import { FileText, Search, Clock, CheckCircle, Factory, Package, Pencil, MapPin, Globe, Paperclip } from 'lucide-react';
+import { FileText, Search, Clock, CheckCircle, Pencil, MapPin, Globe } from 'lucide-react';
 import { RFQFilesList, WorkpieceSummary } from '../components/RFQDetailsPanel';
 
 const MyRFQsPage = () => {
