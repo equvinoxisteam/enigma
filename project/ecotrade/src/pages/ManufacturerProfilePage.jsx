@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext';
-import { ArrowLeft, MapPin, Star, Shield, Factory, CheckCircle, Mail, Settings, Zap, Play, ExternalLink, Globe, Award, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Star, Shield, Factory, CheckCircle, Mail, Settings, Zap, Play, ExternalLink, Globe, Award, Lock, FileText, Presentation, ImageIcon } from 'lucide-react';
 import { profileAPI } from '../api/profileAPI';
 import { hasFeature, FEATURE_KEYS, PLAN_TYPES, getEffectivePlanType } from '../config/planFeatures';
+import { normalizeFileUrl } from '../utils/fileUtils';
+import AuthenticatedImage from '../components/AuthenticatedImage';
 
 const ManufacturerProfilePage = () => {
   const { id } = useParams();
@@ -35,9 +37,15 @@ const ManufacturerProfilePage = () => {
           rating: profile?.manufacturerSettings?.rating || 0,
           reviewCount: profile?.manufacturerSettings?.reviewCount || 0,
           completedRFQs: profile?.manufacturerSettings?.completedProjects || 0,
-          materials: profile?.manufacturerSettings?.materials || [],
+          materials: profile?.manufacturerSettings?.materials || profile?.primaryMaterials || [],
           machinery: profile?.manufacturerSettings?.machinery || [],
-          manufacturingTypes: profile?.manufacturerSettings?.technologies || []
+          manufacturingTypes: profile?.manufacturerSettings?.technologies || profile?.manufacturingTypes || [],
+          certifications: profile?.certifications || [],
+          facilityPhotos: profile?.facilityPhotos || [],
+          companyPresentationUrl: profile?.companyPresentationUrl || '',
+          companyBrochurePdfUrl: profile?.companyBrochurePdfUrl || '',
+          companyProfilePdfUrl: profile?.companyProfilePdfUrl || '',
+          website: profile?.website || ''
         });
       } catch (error) {
         showError('Failed to load manufacturer profile');
@@ -123,6 +131,16 @@ const ManufacturerProfilePage = () => {
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm font-bold text-gray-500">
                 <div className="flex items-center gap-2"><MapPin size={18} className="text-[#4881F8]" /> {manufacturer.country}</div>
+                {!manufacturer.isFree && manufacturer.website && (
+                  <a
+                    href={manufacturer.website.startsWith('http') ? manufacturer.website : `https://${manufacturer.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-[#4881F8] hover:underline"
+                  >
+                    <Globe size={16} /> Website
+                  </a>
+                )}
                 {showCapacity && (
                   <div className={`flex items-center gap-2 px-4 py-1.5 rounded-xl border animate-pulse ${
                     manufacturer.manufacturerSettings?.capacityStatus === 'FULL' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
@@ -163,6 +181,60 @@ const ManufacturerProfilePage = () => {
               </div>
             </div>
           </section>
+
+          {!manufacturer.isFree && manufacturer.facilityPhotos?.length > 0 && (
+            <section className="bg-white border border-gray-100 rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-blue-900/5">
+              <h2 className="text-2xl font-black text-[#01364a] mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><ImageIcon size={20} /></div>
+                Company Gallery
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {manufacturer.facilityPhotos.map((url, i) => (
+                  <div key={url + i} className="aspect-[4/3] rounded-2xl overflow-hidden border border-gray-100">
+                    <AuthenticatedImage src={url} alt={`Facility ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {!manufacturer.isFree && (manufacturer.companyPresentationUrl || manufacturer.companyBrochurePdfUrl || manufacturer.companyProfilePdfUrl) && (
+            <section className="bg-white border border-gray-100 rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-blue-900/5">
+              <h2 className="text-2xl font-black text-[#01364a] mb-6 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={20} /></div>
+                Company Documents
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {manufacturer.companyPresentationUrl && (
+                  <a href={normalizeFileUrl(manufacturer.companyPresentationUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#4881F8] transition-all group">
+                    <Presentation size={28} className="text-orange-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-black text-[#01364a] text-sm">Presentation</p>
+                      <p className="text-xs text-[#4881F8] font-bold group-hover:underline">Download PPT</p>
+                    </div>
+                  </a>
+                )}
+                {manufacturer.companyBrochurePdfUrl && (
+                  <a href={normalizeFileUrl(manufacturer.companyBrochurePdfUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#4881F8] transition-all group">
+                    <FileText size={28} className="text-red-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-black text-[#01364a] text-sm">Brochure</p>
+                      <p className="text-xs text-[#4881F8] font-bold group-hover:underline">Download PDF</p>
+                    </div>
+                  </a>
+                )}
+                {manufacturer.companyProfilePdfUrl && (
+                  <a href={normalizeFileUrl(manufacturer.companyProfilePdfUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-[#4881F8] transition-all group">
+                    <FileText size={28} className="text-red-500 flex-shrink-0" />
+                    <div>
+                      <p className="font-black text-[#01364a] text-sm">Company Profile</p>
+                      <p className="text-xs text-[#4881F8] font-bold group-hover:underline">Download PDF</p>
+                    </div>
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
 
           <section className="bg-white border border-gray-100 rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-blue-900/5">
              <h2 className="text-2xl font-black text-[#01364a] mb-8">Technical Proficiency</h2>
@@ -241,13 +313,13 @@ const ManufacturerProfilePage = () => {
                 Compliance
               </h2>
               <div className="space-y-4">
-                {(manufacturer.manufacturerSettings?.certifications || []).map((c, i) => (
+                {(manufacturer.certifications || []).map((c, i) => (
                   <div key={i} className="flex items-center gap-4 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                     <Shield size={20} className="text-emerald-500 fill-emerald-500/10" />
                     <span className="font-black text-emerald-800 text-sm tracking-tight">{c.replace('_', ' ')}</span>
                   </div>
                 ))}
-                {(manufacturer.manufacturerSettings?.certifications || []).length === 0 && (
+                {(manufacturer.certifications || []).length === 0 && (
                   <p className="text-center py-6 text-gray-400 font-bold italic">No public certs listed</p>
                 )}
               </div>

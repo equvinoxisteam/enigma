@@ -32,6 +32,11 @@ const updateProfile = async (req, res) => {
       website,
       companyLogo,
       companyBanner,
+      description,
+      facilityPhotos,
+      companyPresentationUrl,
+      companyBrochurePdfUrl,
+      companyProfilePdfUrl,
       address,
       city,
       state,
@@ -64,6 +69,13 @@ const updateProfile = async (req, res) => {
     if (website !== undefined) user.website = website;
     if (companyLogo !== undefined) user.companyLogo = companyLogo;
     if (companyBanner !== undefined) user.companyBanner = companyBanner;
+    if (description !== undefined) user.description = description;
+    if (facilityPhotos !== undefined) {
+      user.facilityPhotos = Array.isArray(facilityPhotos) ? facilityPhotos.slice(0, 5) : [];
+    }
+    if (companyPresentationUrl !== undefined) user.companyPresentationUrl = companyPresentationUrl;
+    if (companyBrochurePdfUrl !== undefined) user.companyBrochurePdfUrl = companyBrochurePdfUrl;
+    if (companyProfilePdfUrl !== undefined) user.companyProfilePdfUrl = companyProfilePdfUrl;
     if (address !== undefined) user.address = address;
     if (city !== undefined) user.city = city;
     if (state !== undefined) user.state = state;
@@ -121,6 +133,8 @@ const updateProfile = async (req, res) => {
       if (user.primaryMaterials?.length > 0) completeness += 10;
       if (user.certifications?.length > 0) completeness += 10;
       if (user.maxDimensions?.length > 0 || user.maxDimensions?.width > 0) completeness += 10;
+      if (user.description) completeness += 5;
+      if (user.facilityPhotos?.length > 0) completeness += 5;
     }
 
     user.profileCompleteness = Math.min(completeness, 100);
@@ -145,7 +159,7 @@ const updateProfile = async (req, res) => {
 const getPublicManufacturerProfile = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select(
-      'userType manufacturerStatus companyName companyLogo companyBanner fullName country region companySize description manufacturingTypes certifications manufacturerSettings primaryMaterials profileCompleteness'
+      'userType manufacturerStatus companyName companyLogo companyBanner fullName country region companySize description website yearsInBusiness manufacturingTypes certifications manufacturerSettings primaryMaterials profileCompleteness facilityPhotos companyPresentationUrl companyBrochurePdfUrl companyProfilePdfUrl subscription'
     );
 
     if (!user) {

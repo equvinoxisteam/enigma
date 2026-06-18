@@ -7,7 +7,7 @@ const getFileTypeCategory = (file) => {
   if (!file || !file.name) return 'image';
   const ext = file.name.split('.').pop().toLowerCase();
   const cadExts = ['stl', 'step', 'stp', 'iges', 'igs', 'obj', '3mf', 'dxf', 'dwg'];
-  const docExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'];
+  const docExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'ppt', 'pptx'];
   
   if (cadExts.includes(ext)) return ext; // pass exact extension as type
   if (docExts.includes(ext)) return 'document';

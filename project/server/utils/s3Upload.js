@@ -20,7 +20,7 @@ const fileFilter = (req, file, cb) => {
   const fileExt = path.extname(file.originalname).toLowerCase();
   const allowedImageExts = ['.jpeg', '.jpg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif', '.svg'];
   const allowedCADExts = ['.stl', '.step', '.stp', '.iges', '.igs', '.obj', '.3mf', '.dxf', '.dwg', '.pdf'];
-  const allowedDocExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt'];
+  const allowedDocExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt', '.ppt', '.pptx'];
 
   if (allowedImageExts.includes(fileExt) || allowedCADExts.includes(fileExt) || allowedDocExts.includes(fileExt)) {
     return cb(null, true);

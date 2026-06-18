@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { profileAPI } from '../api/profileAPI';
 import { uploadAPI } from '../api/uploadAPI';
 import { useToast } from '../contexts/ToastContext';
-import { Building2, ShoppingCart, Factory, Save } from 'lucide-react';
+import { Building2, ShoppingCart, Factory, Save, ExternalLink } from 'lucide-react';
 import { countries } from '../data/countries';
 import AuthenticatedImage from '../components/AuthenticatedImage';
 import OtherTextInput from '../components/ui/OtherTextInput';
@@ -314,6 +315,14 @@ const ProfilePage = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">My Profile</h1>
         <p className="text-gray-600">Manage your profile settings and preferences</p>
+        <Link
+          to="/company-profile"
+          className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-[#01364a] text-white rounded-xl text-sm font-bold hover:bg-[#044c66] transition-colors shadow-md"
+        >
+          <Building2 size={18} />
+          Company Profile Page
+          <ExternalLink size={14} className="opacity-70" />
+        </Link>
       </div>
 
       {/* Tabs */}

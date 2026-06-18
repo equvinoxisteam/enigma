@@ -54,6 +54,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  description: {
+    type: String,
+    default: ''
+  },
+  companyPresentationUrl: {
+    type: String,
+    default: ''
+  },
+  companyBrochurePdfUrl: {
+    type: String,
+    default: ''
+  },
+  companyProfilePdfUrl: {
+    type: String,
+    default: ''
+  },
   gstNumber: {
     type: String,
     default: ''

@@ -24,6 +24,7 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 // Dashboard Pages
 import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
+import CompanyProfilePage from "./pages/CompanyProfilePage";
 import StartRFQPage from "./pages/StartRFQPage";
 import RFQPoolPage from "./pages/RFQPoolPage";
 import RFQDetailPage from "./pages/RFQDetailPage";
@@ -152,6 +153,16 @@ function App() {
                   <ProtectedRoute>
                     <DashboardLayout>
                       <ProfilePage />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/company-profile"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <CompanyProfilePage />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }
