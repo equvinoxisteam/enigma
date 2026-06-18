@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check, Shield
+  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check, Shield,
+  LayoutDashboard, UserCircle, Layers, CheckSquare, Mail, BarChart3, Users, PlusCircle, FileStack, Star, CreditCard
 } from 'lucide-react';
 import { getEffectivePlanType } from '../../config/planFeatures';
 import { useAuth } from '../../contexts/AuthContext';
@@ -143,53 +144,62 @@ const DashboardLayout = ({ children }) => {
   const planLabel = userType === 'BUYER' ? 'BUYER FREE' : getEffectivePlanType(user);
 
   const commonMenuItems = [
-    { label: 'My Feed', path: '/dashboard', hint: 'Dashboard overview and activity' },
-    { label: 'My Profile', path: '/profile', hint: 'Company and account details' }
+    { label: 'My Feed', path: '/dashboard', icon: LayoutDashboard, hint: 'Dashboard overview and activity' },
+    { label: 'My Profile', path: '/profile', icon: UserCircle, hint: 'Company and account details' }
   ];
 
   const manufacturerMenuItems = [
-    { label: 'RFQ Pool', path: '/rfqs-pool', hint: 'Browse open buyer requests' },
-    { label: 'Accepted RFQs', path: '/accepted-rfqs', hint: 'RFQs you are working on' },
-    { label: 'Your Invitations', path: '/invitations', hint: 'Direct buyer invitations' },
-    { label: 'Analytics Dashboard', path: '/analytics', hint: 'Performance and pipeline metrics' }
+    { label: 'RFQ Pool', path: '/rfqs-pool', icon: Layers, hint: 'Browse open buyer requests' },
+    { label: 'Accepted RFQs', path: '/accepted-rfqs', icon: CheckSquare, hint: 'RFQs you are working on' },
+    { label: 'Your Invitations', path: '/invitations', icon: Mail, hint: 'Direct buyer invitations' },
+    { label: 'Analytics Dashboard', path: '/analytics', icon: BarChart3, hint: 'Performance and pipeline metrics' }
   ];
 
   const buyerMenuItems = [
-    { label: "Manufacturer Pool", path: '/manufacturers-pool', hint: 'Discover and compare suppliers' },
-    { label: 'Create RFQ', path: '/start-rfq', hint: 'Publish a new sourcing request' },
-    { label: 'My RFQs', path: '/my-rfqs', hint: 'Track your active requests' },
-    { label: 'My Manufacturers', path: '/my-manufacturers', hint: 'Saved and starred suppliers' }
+    { label: 'Manufacturer Pool', path: '/manufacturers-pool', icon: Users, hint: 'Discover and compare suppliers' },
+    { label: 'Create RFQ', path: '/start-rfq', icon: PlusCircle, hint: 'Publish a new sourcing request' },
+    { label: 'My RFQs', path: '/my-rfqs', icon: FileStack, hint: 'Track your active requests' },
+    { label: 'My Manufacturers', path: '/my-manufacturers', icon: Star, hint: 'Saved and starred suppliers' }
   ];
 
   const supportMenuItems = [
-    { label: 'Pricing', path: '/pricing', hint: 'Plans and upgrade options' },
-    { label: 'Settings', path: '/settings', hint: 'Notifications and preferences' },
-    { label: 'Help', path: '/help', hint: 'Guides and support' }
+    { label: 'Pricing', path: '/pricing', icon: CreditCard, hint: 'Plans and upgrade options' },
+    { label: 'Settings', path: '/settings', icon: Settings, hint: 'Notifications and preferences' },
+    { label: 'Help', path: '/help', icon: HelpCircle, hint: 'Guides and support' }
   ];
 
-  const renderNavLinks = (items) => items.map((item) => (
-    <Link
-      key={item.path}
-      to={item.path}
-      title={item.hint}
-      className={`
-        block ${sidebarOpen ? 'px-4' : 'px-2 text-center'} py-2.5 rounded-lg transition-colors text-sm font-medium
-        ${isActive(item.path)
-          ? 'bg-[#4881F8] text-white'
-          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-        }
-      `}
-    >
-      {sidebarOpen ? item.label : item.label.charAt(0)}
-    </Link>
-  ));
+  const isActive = (path) => {
+    if (path === '/dashboard') return location.pathname === '/dashboard';
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
+  const renderNavLinks = (items) => items.map((item) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        title={item.hint}
+        className={`
+          flex items-center gap-3 py-2.5 rounded-lg transition-colors text-sm font-medium
+          ${sidebarOpen ? 'px-4' : 'px-2 justify-center'}
+          ${active
+            ? 'bg-[#4881F8] text-white'
+            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+          }
+        `}
+      >
+        <Icon size={18} className="flex-shrink-0" />
+        {sidebarOpen && <span className="truncate">{item.label}</span>}
+      </Link>
+    );
+  });
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
-
-  const isActive = (path) => location.pathname === path;
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -275,19 +285,19 @@ const DashboardLayout = ({ children }) => {
                   <Link
                     to="/admin"
                     title="Admin panel"
-                    className={`block ${sidebarOpen ? 'px-4' : 'px-2 text-center'} py-2.5 rounded-lg transition-colors text-sm font-medium text-amber-300 hover:bg-gray-800 hover:text-amber-200`}
+                    className={`flex items-center gap-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-amber-300 hover:bg-gray-800 hover:text-amber-200 ${sidebarOpen ? 'px-4' : 'px-2 justify-center'}`}
                   >
-                    {sidebarOpen ? (
-                      <span className="flex items-center gap-2"><Shield size={14} /> Admin Panel</span>
-                    ) : 'A'}
+                    <Shield size={18} className="flex-shrink-0" />
+                    {sidebarOpen && <span>Admin Panel</span>}
                   </Link>
                 )}
                 <button
                   onClick={handleLogout}
-                  className={`w-full block ${sidebarOpen ? 'px-4 text-left' : 'px-2 text-center'} py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors`}
+                  className={`w-full flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${sidebarOpen ? 'px-4' : 'px-2 justify-center'}`}
                   title="Sign out of your account"
                 >
-                  {sidebarOpen ? 'Logout' : '↪'}
+                  <LogOut size={18} className="flex-shrink-0" />
+                  {sidebarOpen && <span>Logout</span>}
                 </button>
               </div>
             </div>

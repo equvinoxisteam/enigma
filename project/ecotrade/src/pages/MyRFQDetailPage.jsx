@@ -6,7 +6,8 @@ import { ratingAPI } from '../api/ratingAPI';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import CADFileViewer from '../components/CADFileViewer';
-import { ArrowLeft, FileText, Users, MessageSquare, Package, CheckCircle, X, Star, Send } from 'lucide-react';
+import { DetailField, RFQFilesList } from '../components/RFQDetailsPanel';
+import { ArrowLeft, FileText, Users, MessageSquare, Package, CheckCircle, X, Star, Send, Pencil, Save, Loader2 } from 'lucide-react';
 
 const MyRFQDetailPage = () => {
   const { id } = useParams();
@@ -21,6 +22,39 @@ const MyRFQDetailPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState({ rating: 5, comment: '' });
+  const [isEditing, setIsEditing] = useState(searchParams.get('edit') === '1');
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+
+  const canEdit = rfq && ['DRAFT', 'OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'].includes(rfq.status);
+
+  const buildEditForm = (data) => ({
+    title: data.title || '',
+    description: data.description || '',
+    preferredCurrency: data.preferredCurrency || 'USD',
+    rfqDeadline: data.rfqDeadline ? new Date(data.rfqDeadline).toISOString().slice(0, 16) : '',
+    acceptanceDeadline: data.acceptanceDeadline ? new Date(data.acceptanceDeadline).toISOString().slice(0, 16) : '',
+    shippingTerms: data.shippingTerms || 'FOB',
+    country: data.country || '',
+    region: data.region || '',
+    communicationLanguage: data.communicationLanguage || 'English',
+    requestJustification: data.requestJustification || '',
+    partTrackingId: data.partTrackingId || '',
+    notes: data.notes || '',
+    targetDeliveryDate: data.targetDeliveryDate ? new Date(data.targetDeliveryDate).toISOString().slice(0, 10) : '',
+    requiredCertificates: data.requiredCertificates || [],
+    workpieces: (data.workpieces || []).map((wp) => ({
+      ...wp,
+      dimensions: { length: 0, width: 0, height: 0, diameter: 0, ...wp.dimensions },
+      quantity: wp.quantity || 1
+    }))
+  });
+
+  useEffect(() => {
+    if (rfq && isEditing && !editForm) {
+      setEditForm(buildEditForm(rfq));
+    }
+  }, [rfq, isEditing, editForm]);
 
   useEffect(() => {
     fetchRFQ();
@@ -113,6 +147,83 @@ const MyRFQDetailPage = () => {
     }
   };
 
+  const handleStartEdit = () => {
+    setEditForm(buildEditForm(rfq));
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditForm(null);
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleWorkpieceEdit = (index, field, value) => {
+    setEditForm((prev) => {
+      const workpieces = [...prev.workpieces];
+      if (field.startsWith('dimensions.')) {
+        const dim = field.split('.')[1];
+        workpieces[index] = {
+          ...workpieces[index],
+          dimensions: { ...workpieces[index].dimensions, [dim]: parseFloat(value) || 0 }
+        };
+      } else {
+        workpieces[index] = { ...workpieces[index], [field]: value };
+      }
+      return { ...prev, workpieces };
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm) return;
+    setSaving(true);
+    try {
+      const payload = {
+        title: editForm.title,
+        description: editForm.description,
+        preferredCurrency: editForm.preferredCurrency,
+        rfqDeadline: editForm.rfqDeadline ? new Date(editForm.rfqDeadline) : undefined,
+        acceptanceDeadline: editForm.acceptanceDeadline ? new Date(editForm.acceptanceDeadline) : undefined,
+        shippingTerms: editForm.shippingTerms,
+        country: editForm.country,
+        region: editForm.region,
+        communicationLanguage: editForm.communicationLanguage,
+        requestJustification: editForm.requestJustification,
+        partTrackingId: editForm.partTrackingId,
+        notes: editForm.notes,
+        targetDeliveryDate: editForm.targetDeliveryDate ? new Date(editForm.targetDeliveryDate) : undefined,
+        requiredCertificates: editForm.requiredCertificates,
+        workpieces: editForm.workpieces.map((wp) => ({
+          mainFile: wp.mainFile,
+          extraFiles: wp.extraFiles || [],
+          partType: wp.partType,
+          dimensions: wp.dimensions,
+          technology: wp.technology,
+          material: wp.material,
+          quantity: parseInt(wp.quantity, 10) || 1
+        }))
+      };
+      const response = await rfqAPI.update(id, payload);
+      if (response.success) {
+        showSuccess('RFQ updated successfully');
+        setRfq(response.data);
+        setIsEditing(false);
+        setEditForm(null);
+      }
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to update RFQ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const certificationOptions = ['ISO_9001', 'ISO_13485', 'AS9100', 'IATF_16949', 'ROHS', 'OTHER'];
+  const technologyOptions = ['CNC', 'TURNING', 'MILLING', '3D_PRINTING', 'SHEET_METAL', 'DIE_CASTING', 'INJECTION_MOLDING', 'STAMPING', 'WELDING', 'ASSEMBLY', 'OTHER'];
+  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4881F8] focus:border-transparent text-sm';
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto">
@@ -149,8 +260,36 @@ const MyRFQDetailPage = () => {
             <h1 className="text-3xl font-bold mb-2">{rfq.title}</h1>
             <p className="text-gray-600">RFQ #{rfq._id.toString().slice(-6)}</p>
           </div>
-          <div className="flex items-center gap-3">
-            {rfq.status === 'DELIVERED' && !rfq.rating && (
+          <div className="flex items-center gap-3 flex-wrap">
+            {canEdit && !isEditing && (
+              <button
+                onClick={handleStartEdit}
+                className="flex items-center gap-2 px-4 py-2 border border-[#4881F8] text-[#4881F8] rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <Pencil size={18} />
+                Edit RFQ
+              </button>
+            )}
+            {isEditing && (
+              <>
+                <button
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0] disabled:opacity-60"
+                >
+                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  Save Changes
+                </button>
+              </>
+            )}
+            {rfq.status === 'DELIVERED' && !rfq.rating && !isEditing && (
               <button
                 onClick={() => setShowRatingModal(true)}
                 className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -159,7 +298,7 @@ const MyRFQDetailPage = () => {
                 Rate Manufacturer
               </button>
             )}
-            {rfq.status === 'SHIPPED' && (
+            {rfq.status === 'SHIPPED' && !isEditing && (
               <button
                 onClick={() => handleStatusUpdate('DELIVERED')}
                 className="px-4 py-2 bg-[#4881F8] text-white rounded-lg hover:bg-[#3b6fe0]"
@@ -220,30 +359,186 @@ const MyRFQDetailPage = () => {
       {/* Tab Content */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-sm font-medium text-gray-500">RFQ Deadline</label>
-                <p className="text-gray-900">{new Date(rfq.rfqDeadline).toLocaleString()}</p>
+          <div className="space-y-8">
+            {isEditing && editForm ? (
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Title</label>
+                    <input className={inputClass} value={editForm.title} onChange={(e) => handleEditChange('title', e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Description</label>
+                    <textarea className={inputClass} rows={3} value={editForm.description} onChange={(e) => handleEditChange('description', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">RFQ Deadline</label>
+                    <input type="datetime-local" className={inputClass} value={editForm.rfqDeadline} onChange={(e) => handleEditChange('rfqDeadline', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Acceptance Deadline</label>
+                    <input type="datetime-local" className={inputClass} value={editForm.acceptanceDeadline} onChange={(e) => handleEditChange('acceptanceDeadline', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Preferred Currency</label>
+                    <select className={inputClass} value={editForm.preferredCurrency} onChange={(e) => handleEditChange('preferredCurrency', e.target.value)}>
+                      {['USD', 'EUR', 'GBP', 'INR', 'CNY'].map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Shipping Terms</label>
+                    <select className={inputClass} value={editForm.shippingTerms} onChange={(e) => handleEditChange('shippingTerms', e.target.value)}>
+                      {['FOB', 'CIF', 'EXW', 'DDP', 'DAP', 'FCA'].map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Country</label>
+                    <input className={inputClass} value={editForm.country} onChange={(e) => handleEditChange('country', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Region</label>
+                    <input className={inputClass} value={editForm.region} onChange={(e) => handleEditChange('region', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Communication Language</label>
+                    <input className={inputClass} value={editForm.communicationLanguage} onChange={(e) => handleEditChange('communicationLanguage', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Target Delivery Date</label>
+                    <input type="date" className={inputClass} value={editForm.targetDeliveryDate} onChange={(e) => handleEditChange('targetDeliveryDate', e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Request Justification</label>
+                    <textarea className={inputClass} rows={2} value={editForm.requestJustification} onChange={(e) => handleEditChange('requestJustification', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Part Tracking ID</label>
+                    <input className={inputClass} value={editForm.partTrackingId} onChange={(e) => handleEditChange('partTrackingId', e.target.value)} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-500 block mb-1">Notes</label>
+                    <textarea className={inputClass} rows={2} value={editForm.notes} onChange={(e) => handleEditChange('notes', e.target.value)} />
+                  </div>
+                </div>
+
+                {editForm.workpieces?.map((wp, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                    <h4 className="font-semibold text-gray-800">Workpiece {index + 1}</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 block mb-1">Technology</label>
+                        <select className={inputClass} value={wp.technology || ''} onChange={(e) => handleWorkpieceEdit(index, 'technology', e.target.value)}>
+                          <option value="">Select</option>
+                          {technologyOptions.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 block mb-1">Material</label>
+                        <input className={inputClass} value={wp.material || ''} onChange={(e) => handleWorkpieceEdit(index, 'material', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 block mb-1">Part Type</label>
+                        <input className={inputClass} value={wp.partType || ''} onChange={(e) => handleWorkpieceEdit(index, 'partType', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 block mb-1">Quantity</label>
+                        <input type="number" min="1" className={inputClass} value={wp.quantity} onChange={(e) => handleWorkpieceEdit(index, 'quantity', e.target.value)} />
+                      </div>
+                      {['length', 'width', 'height', 'diameter'].map((dim) => (
+                        <div key={dim}>
+                          <label className="text-sm font-medium text-gray-500 block mb-1 capitalize">{dim} (mm)</label>
+                          <input type="number" className={inputClass} value={wp.dimensions?.[dim] || 0} onChange={(e) => handleWorkpieceEdit(index, `dimensions.${dim}`, e.target.value)} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Status</label>
-                <p className="text-gray-900">{rfq.status.replace('_', ' ')}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Preferred Currency</label>
-                <p className="text-gray-900">{rfq.preferredCurrency}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Shipping Terms</label>
-                <p className="text-gray-900">{rfq.shippingTerms}</p>
-              </div>
-            </div>
-            {rfq.requestJustification && (
-              <div>
-                <h4 className="font-semibold mb-2">Request Justification</h4>
-                <p className="text-gray-700">{rfq.requestJustification}</p>
-              </div>
+            ) : (
+              <>
+                {rfq.description && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-gray-800">Project Description</h4>
+                    <p className="text-gray-700">{rfq.description}</p>
+                  </div>
+                )}
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <DetailField label="RFQ Deadline" value={new Date(rfq.rfqDeadline).toLocaleString()} />
+                  <DetailField label="Status" value={rfq.status.replace(/_/g, ' ')} />
+                  <DetailField label="Preferred Currency" value={rfq.preferredCurrency} />
+                  <DetailField label="Shipping Terms" value={rfq.shippingTerms} />
+                  <DetailField label="Country" value={rfq.country} />
+                  <DetailField label="Region" value={rfq.region} />
+                  <DetailField label="Communication Language" value={rfq.communicationLanguage} />
+                  {rfq.acceptanceDeadline && (
+                    <DetailField label="Acceptance Deadline" value={new Date(rfq.acceptanceDeadline).toLocaleString()} />
+                  )}
+                  {rfq.targetDeliveryDate && (
+                    <DetailField label="Target Delivery" value={new Date(rfq.targetDeliveryDate).toLocaleDateString()} />
+                  )}
+                  {rfq.partTrackingId && (
+                    <DetailField label="Part Tracking ID" value={rfq.partTrackingId} />
+                  )}
+                </div>
+
+                {rfq.requestJustification && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-gray-800">Request Justification</h4>
+                    <p className="text-gray-700">{rfq.requestJustification}</p>
+                  </div>
+                )}
+
+                {rfq.notes && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-gray-800">Notes</h4>
+                    <p className="text-gray-700">{rfq.notes}</p>
+                  </div>
+                )}
+
+                {rfq.requiredCertificates?.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-gray-800">Required Certificates</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {rfq.requiredCertificates.map((cert) => (
+                        <span key={cert} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full font-medium">
+                          {cert.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-semibold mb-3 text-gray-800">Attached Files</h4>
+                  <RFQFilesList workpieces={rfq.workpieces} ndaFile={rfq.ndaFile} />
+                </div>
+
+                {rfq.workpieces?.length > 0 && (
+                  <div className="space-y-6">
+                    <h4 className="font-semibold text-gray-800">Workpieces & Previews</h4>
+                    {rfq.workpieces.map((workpiece, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-4 text-sm">
+                          <span><strong>Technology:</strong> {workpiece.technology?.replace(/_/g, ' ')}</span>
+                          <span><strong>Material:</strong> {workpiece.material}</span>
+                          <span><strong>Qty:</strong> {workpiece.quantity}</span>
+                          {workpiece.partType && <span><strong>Type:</strong> {workpiece.partType}</span>}
+                        </div>
+                        {workpiece.mainFile && (
+                          <CADFileViewer workpiece={workpiece} height="320px" backgroundColor="#111827" />
+                        )}
+                        {workpiece.extraFiles?.length > 0 && (
+                          <div className="p-4 border-t border-gray-100">
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Extra Files</p>
+                            <RFQFilesList workpieces={[{ extraFiles: workpiece.extraFiles }]} />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

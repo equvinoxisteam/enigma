@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { rfqAPI } from '../api/rfqAPI';
 import { useToast } from '../contexts/ToastContext';
-import { FileText, Filter, Search, Clock, CheckCircle, Factory, Package, X } from 'lucide-react';
+import { FileText, Search, Clock, CheckCircle, Factory, Package, Pencil, MapPin, Globe, Paperclip } from 'lucide-react';
+import { RFQFilesList, WorkpieceSummary } from '../components/RFQDetailsPanel';
 
 const MyRFQsPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { showError } = useToast();
   const [rfqs, setRfqs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,59 +168,100 @@ const MyRFQsPage = () => {
       ) : (
         <>
           <div className="space-y-4 mb-6">
-            {rfqs.map((rfq) => (
-              <Link
+            {rfqs.map((rfq) => {
+              const canEdit = ['DRAFT', 'OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'].includes(rfq.status);
+              return (
+              <div
                 key={rfq._id}
-                to={`/my-rfqs/${rfq._id}${location.state?.tab ? `?tab=${location.state.tab}` : ''}`}
-                className="block bg-white border border-gray-200 rounded-lg p-6 hover:border-[#4881F8] hover:shadow-md transition-all"
+                className="bg-white border border-gray-200 rounded-lg p-5 sm:p-6 hover:border-[#4881F8] hover:shadow-md transition-all"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                  <Link to={`/my-rfqs/${rfq._id}`} className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">{rfq.title}</h3>
                       {getStatusBadge(rfq.status)}
                     </div>
                     <p className="text-sm text-gray-600">
-                      RFQ #{rfq._id.toString().slice(-6)} • Created {new Date(rfq.createdAt).toLocaleDateString()}
+                      RFQ #{rfq._id.toString().slice(-6)} · Created {new Date(rfq.createdAt).toLocaleDateString()}
                     </p>
+                    {rfq.description && (
+                      <p className="text-sm text-gray-500 mt-2 line-clamp-2">{rfq.description}</p>
+                    )}
+                  </Link>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {canEdit && (
+                      <Link
+                        to={`/my-rfqs/${rfq._id}?edit=1`}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#4881F8] border border-[#4881F8] rounded-lg hover:bg-blue-50 transition-colors"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </Link>
+                    )}
+                    <Link
+                      to={`/my-rfqs/${rfq._id}`}
+                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-[#4881F8] rounded-lg hover:bg-[#3b6fe0] transition-colors"
+                    >
+                      View
+                    </Link>
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-4 gap-4 mb-4">
-                  {rfq.workpieces?.[0] && (
-                    <>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Factory size={16} className="mr-2" />
-                        {rfq.workpieces[0].technology?.replace('_', ' ')} • {rfq.workpieces[0].material}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Package size={16} className="mr-2" />
-                        Qty: {rfq.workpieces[0].quantity}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Clock size={16} className="mr-2" />
-                        Deadline: {new Date(rfq.rfqDeadline).toLocaleDateString()}
-                      </div>
-                      {rfq.selectedManufacturerId && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <CheckCircle size={16} className="mr-2 text-green-600" />
-                          Supplier: {rfq.selectedManufacturerId?.companyName || 'Selected'}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {rfq.status === 'REQUESTS_PENDING' && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="flex items-center text-sm text-[#4881F8]">
-                      <Clock size={16} className="mr-2" />
-                      New manufacturer requests available
+                <Link to={`/my-rfqs/${rfq._id}`} className="block">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Clock size={16} className="mr-2 flex-shrink-0" />
+                      Deadline: {new Date(rfq.rfqDeadline).toLocaleDateString()}
                     </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPin size={16} className="mr-2 flex-shrink-0" />
+                      {rfq.country}{rfq.region ? `, ${rfq.region}` : ''}
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Globe size={16} className="mr-2 flex-shrink-0" />
+                      {rfq.shippingTerms} · {rfq.preferredCurrency}
+                    </div>
+                    {rfq.selectedManufacturerId && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <CheckCircle size={16} className="mr-2 text-green-600 flex-shrink-0" />
+                        Supplier: {rfq.selectedManufacturerId?.companyName || 'Selected'}
+                      </div>
+                    )}
                   </div>
-                )}
-              </Link>
-            ))}
+
+                  {rfq.workpieces?.length > 0 && (
+                    <div className="grid sm:grid-cols-2 gap-2 mb-4">
+                      {rfq.workpieces.map((wp, i) => (
+                        <WorkpieceSummary key={i} workpiece={wp} index={i} />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <RFQFilesList workpieces={rfq.workpieces} ndaFile={rfq.ndaFile} compact />
+                  </div>
+
+                  {rfq.requiredCertificates?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {rfq.requiredCertificates.map((cert) => (
+                        <span key={cert} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">
+                          {cert.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {rfq.status === 'REQUESTS_PENDING' && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="flex items-center text-sm text-[#4881F8]">
+                        <Clock size={16} className="mr-2" />
+                        New manufacturer requests available
+                      </div>
+                    </div>
+                  )}
+                </Link>
+              </div>
+            );})}
           </div>
 
           {/* Pagination */}
