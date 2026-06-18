@@ -19,12 +19,16 @@ export const getFileExtension = (url) => {
 const STL_EXTS = ['stl'];
 const STEP_EXTS = ['step', 'stp'];
 const PDF_EXTS = ['pdf'];
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+const TWO_D_EXTS = ['dxf', 'dwg'];
 
-export const getFileKind = (url) => {
-  const ext = getFileExtension(url);
+export const getFileKind = (url, fileName = '') => {
+  const ext = getFileExtension(url) || getFileExtension(fileName);
   if (STL_EXTS.includes(ext)) return 'stl';
   if (STEP_EXTS.includes(ext)) return 'step';
   if (PDF_EXTS.includes(ext)) return 'pdf';
+  if (IMAGE_EXTS.includes(ext)) return 'image';
+  if (TWO_D_EXTS.includes(ext)) return '2d';
   return 'other';
 };
 

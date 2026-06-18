@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:prod": "vite build --mode production",
+    "copy:staircase": "node scripts/copy-staircase.mjs",
+    "prebuild": "node scripts/copy-staircase.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}"

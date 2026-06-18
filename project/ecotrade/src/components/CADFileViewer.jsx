@@ -1,52 +1,82 @@
 import React from 'react';
-import { Box, Download, FileText } from 'lucide-react';
+import { FileText, Layers } from 'lucide-react';
 import STLViewer from './STLViewer';
-import STEPViewer from './STEPViewer';
+import StaircaseViewer from './StaircaseViewer';
 import PDFViewer from './PDFViewer';
-import { getWorkpieceFileUrl, getFileKind, normalizeFileUrl, getFileName } from '../utils/fileUtils';
+import ImageViewer from './ImageViewer';
+import FileViewerFrame from './FileViewerFrame';
+import { getWorkpieceFileUrl, getFileKind, getFileName } from '../utils/fileUtils';
 
-const CADFileViewer = ({ workpiece, fileUrl, height = '400px', backgroundColor = '#f9fafb' }) => {
+const CADFileViewer = ({
+  workpiece,
+  fileUrl,
+  fileName,
+  height = '400px',
+  backgroundColor = '#111827'
+}) => {
   const url = fileUrl || getWorkpieceFileUrl(workpiece);
+  const displayName = fileName || workpiece?.mainFile?.name || getFileName(url);
 
   if (!url) {
     return (
       <div className="bg-gray-100 rounded-lg flex items-center justify-center text-gray-500" style={{ height }}>
-        <p>No CAD file attached</p>
+        <p>No file attached</p>
       </div>
     );
   }
 
-  const kind = getFileKind(url);
-  const normalizedUrl = normalizeFileUrl(url);
-  const fileName = getFileName(url);
+  const kind = getFileKind(url, displayName);
 
   if (kind === 'stl') {
-    return <STLViewer fileUrl={url} height={height} backgroundColor={backgroundColor} />;
+    return (
+      <STLViewer
+        fileUrl={url}
+        fileName={displayName}
+        height={height}
+        backgroundColor={backgroundColor}
+      />
+    );
   }
 
   if (kind === 'step') {
-    return <STEPViewer fileUrl={url} height={height} backgroundColor={backgroundColor} />;
+    return (
+      <StaircaseViewer
+        fileUrl={url}
+        fileName={displayName}
+        height={height}
+        backgroundColor={backgroundColor}
+      />
+    );
   }
 
   if (kind === 'pdf') {
-    return <PDFViewer fileUrl={url} height={height} />;
+    return <PDFViewer fileUrl={url} fileName={displayName} height={height} />;
+  }
+
+  if (kind === 'image') {
+    return <ImageViewer fileUrl={url} fileName={displayName} height={height} />;
+  }
+
+  if (kind === '2d') {
+    return (
+      <FileViewerFrame fileName={displayName} height={height}>
+        <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center text-gray-300 p-6">
+          <Layers size={48} className="text-[#4881F8] mb-3 opacity-80" />
+          <p className="text-sm font-semibold text-center">2D CAD drawing attached</p>
+          <p className="text-xs text-gray-500 mt-1 text-center">Preview not available for this format</p>
+        </div>
+      </FileViewerFrame>
+    );
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center" style={{ minHeight: height }}>
-      <Box size={48} className="mx-auto mb-4 text-gray-400" />
-      <p className="font-semibold text-gray-700 mb-1">{fileName}</p>
-      <p className="text-sm text-gray-500 mb-4">CAD file attached — preview not available for this format</p>
-      <a
-        href={normalizedUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4881F8] text-white rounded-lg text-sm font-medium hover:bg-[#3b6fe0]"
-      >
-        <Download size={16} />
-        Download File
-      </a>
-    </div>
+    <FileViewerFrame fileName={displayName} height={height}>
+      <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center text-gray-300 p-6">
+        <FileText size={48} className="text-gray-500 mb-3" />
+        <p className="text-sm font-semibold text-center">File attached</p>
+        <p className="text-xs text-gray-500 mt-1 text-center">Preview not available for this format</p>
+      </div>
+    </FileViewerFrame>
   );
 };
 

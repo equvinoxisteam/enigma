@@ -1,24 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { getViewerFetchPath, getFileName } from '../utils/fileUtils';
+import { getViewerFetchPath } from '../utils/fileUtils';
+import { buildStepMesh } from '../utils/stepMeshBuilder';
 import { addLabeledAxes } from '../utils/threeAxisHelper';
 import axiosInstance from '../api/axios';
 import FileViewerFrame from './FileViewerFrame';
 
-const STLViewer = ({
-  fileUrl,
-  fileName,
-  width = '100%',
-  height = '400px',
-  backgroundColor = '#111827'
-}) => {
+const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor = '#111827' }) => {
   const mountRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const displayName = fileName || getFileName(fileUrl);
 
   useEffect(() => {
     if (!mountRef.current || !fileUrl) return;
@@ -30,32 +23,20 @@ const STLViewer = ({
     let scene = null;
     const mountEl = mountRef.current;
 
-    const resizeRenderer = (camera) => {
-      if (!mountEl || !renderer || !camera) return;
-      const w = mountEl.clientWidth || mountEl.offsetWidth || 640;
-      const h = mountEl.clientHeight || mountEl.offsetHeight || 360;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h, false);
-    };
-
-    const loadStl = async () => {
+    const loadModel = async () => {
       try {
         setLoading(true);
         setError(null);
 
         const fetchPath = getViewerFetchPath(fileUrl);
         const response = await axiosInstance.get(fetchPath, { responseType: 'arraybuffer' });
+        const occtimportjs = (await import('occt-import-js')).default;
+        const occt = await occtimportjs();
+        const result = occt.ReadStepFile(new Uint8Array(response.data), null);
 
-        if (!response.data || response.data.byteLength === 0) {
-          throw new Error('Empty STL file');
+        if (!result?.meshes?.length) {
+          throw new Error('No geometry found in STEP file');
         }
-
-        const loader = new STLLoader();
-        const geometry = loader.parse(response.data);
-        geometry.computeVertexNormals();
-        geometry.center();
-        geometry.computeBoundingBox();
 
         if (disposed || !mountEl) return;
 
@@ -63,42 +44,46 @@ const STLViewer = ({
         scene.background = new THREE.Color(backgroundColor);
 
         const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100000);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountEl.innerHTML = '';
         mountEl.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-        const keyLight = new THREE.DirectionalLight(0xffffff, 1);
-        keyLight.position.set(1, 2, 3);
-        scene.add(keyLight);
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.45);
-        fillLight.position.set(-2, -1, -1);
-        scene.add(fillLight);
+        const resizeRenderer = () => {
+          if (!mountEl || !renderer || !camera) return;
+          const w = mountEl.clientWidth || 640;
+          const h = mountEl.clientHeight || 360;
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h, false);
+        };
+        resizeRenderer();
 
-        const material = new THREE.MeshPhongMaterial({
-          color: 0x4881f8,
-          specular: 0x444444,
-          shininess: 80
-        });
+        scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(2, 3, 4);
+        scene.add(dirLight);
 
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
+        const group = new THREE.Group();
+        for (const resultMesh of result.meshes) {
+          const { mesh } = buildStepMesh(resultMesh, false);
+          group.add(mesh);
+        }
+        scene.add(group);
 
-        const box = new THREE.Box3().setFromObject(mesh);
+        const box = new THREE.Box3().setFromObject(group);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z, 0.001);
 
+        group.position.sub(center);
         addLabeledAxes(scene, maxDim);
 
-        camera.position.set(center.x + maxDim, center.y + maxDim * 0.5, center.z + maxDim * 1.5);
+        camera.position.set(maxDim, maxDim * 0.6, maxDim * 1.8);
         controls = new OrbitControls(camera, renderer.domElement);
-        controls.target.copy(center);
+        controls.target.set(0, 0, 0);
         controls.enableDamping = true;
         controls.update();
-
-        resizeRenderer(camera);
 
         const animate = () => {
           animationId = requestAnimationFrame(animate);
@@ -107,59 +92,59 @@ const STLViewer = ({
         };
         animate();
 
-        const handleResize = () => resizeRenderer(camera);
-        window.addEventListener('resize', handleResize);
-
         setLoading(false);
+
+        const handleResize = () => resizeRenderer();
+        window.addEventListener('resize', handleResize);
 
         return () => {
           window.removeEventListener('resize', handleResize);
+          scene?.traverse((obj) => {
+            if (obj instanceof THREE.Mesh) {
+              obj.geometry?.dispose();
+              const mat = obj.material;
+              if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+              else mat?.dispose();
+            }
+            if (obj instanceof THREE.Sprite) {
+              obj.material?.map?.dispose();
+              obj.material?.dispose();
+            }
+          });
         };
-      } catch (fetchError) {
-        console.error('STL viewer error:', fetchError);
+      } catch (err) {
+        console.error('OCCT STEP viewer error:', err);
         if (!disposed) {
-          setError('Failed to load STL preview.');
+          setError('Failed to load STEP preview.');
           setLoading(false);
         }
       }
     };
 
-    const cleanupInner = loadStl();
+    const cleanupPromise = loadModel();
 
     return () => {
       disposed = true;
       if (animationId) cancelAnimationFrame(animationId);
       controls?.dispose();
       if (renderer) {
-        renderer.dispose();
         if (mountEl?.contains(renderer.domElement)) {
           mountEl.removeChild(renderer.domElement);
         }
+        renderer.dispose();
       }
-      scene?.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry?.dispose();
-          const mat = object.material;
-          if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-          else mat?.dispose();
-        }
-        if (object instanceof THREE.Sprite) {
-          object.material?.map?.dispose();
-          object.material?.dispose();
-        }
-      });
-      cleanupInner?.then?.((fn) => fn?.());
+      cleanupPromise?.then?.((fn) => fn?.());
     };
   }, [fileUrl, backgroundColor]);
 
   return (
-    <FileViewerFrame fileName={displayName} height={height} className={width !== '100%' ? '' : ''}>
-      <div ref={mountRef} className="w-full h-full" style={{ width }} />
+    <FileViewerFrame fileName={fileName} height={height}>
+      <div ref={mountRef} className="w-full h-full" />
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90 z-20">
           <div className="text-center">
             <Loader2 className="animate-spin text-[#4881F8] mx-auto mb-2" size={32} />
-            <p className="text-sm text-gray-200">Loading 3D model...</p>
+            <p className="text-sm text-gray-200">Loading STEP model...</p>
           </div>
         </div>
       )}
@@ -175,4 +160,4 @@ const STLViewer = ({
   );
 };
 
-export default STLViewer;
+export default OcctStepViewer;

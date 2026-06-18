@@ -29,6 +29,7 @@ const StartRFQPage = () => {
     isCorporateRFQ: false,
     workpieces: [{
       mainFile: null,
+      mainFileName: '',
       mainFileUrl: '',
       extraFiles: [],
       partType: '',
@@ -131,6 +132,7 @@ const StartRFQPage = () => {
             ...current,
             mainFileUrl: fileUrl,
             mainFile: file,
+            mainFileName: file.name,
             dimensions: parsedDimensions
               ? { ...current.dimensions, ...parsedDimensions }
               : current.dimensions
@@ -158,6 +160,7 @@ const StartRFQPage = () => {
     if (type === 'main') {
       handleWorkpieceChange(workpieceIndex, 'mainFileUrl', '');
       handleWorkpieceChange(workpieceIndex, 'mainFile', null);
+      handleWorkpieceChange(workpieceIndex, 'mainFileName', '');
     } else if (type === 'nda') {
       setFormData(prev => ({ ...prev, ndaFileUrl: '', ndaFile: null }));
     } else {
@@ -173,7 +176,7 @@ const StartRFQPage = () => {
     if (activeTab === 'workpieces') {
       const wp = formData.workpieces[0];
       if (!wp.mainFileUrl) {
-        showError('Please upload a technical model (STL/STEP) before continuing.');
+        showError('Please upload a technical file (STL, STEP, PDF, or 2D drawing) before continuing.');
         return;
       }
       if (!wp.technology) {
@@ -328,11 +331,16 @@ const StartRFQPage = () => {
                   <div key={index} className="space-y-8">
                     <div className="relative group">
                       <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
-                        Technical Model (STL/STEP) <div className="cursor-help" title="Upload CAD for AI analysis"><Info size={12} className="text-gray-200" /></div>
+                        Technical Model (STL / STEP / PDF / 2D) <div className="cursor-help" title="Upload CAD or drawing for AI analysis"><Info size={12} className="text-gray-200" /></div>
                       </label>
                       {wp.mainFileUrl ? (
                          <div className="bg-gray-900 rounded-[2.5rem] overflow-hidden relative group/viewer">
-                            <CADFileViewer fileUrl={wp.mainFileUrl} height="400px" backgroundColor="#111827" />
+                            <CADFileViewer
+                              fileUrl={wp.mainFileUrl}
+                              fileName={wp.mainFileName || wp.mainFile?.name}
+                              height="400px"
+                              backgroundColor="#111827"
+                            />
                             <button 
                               type="button"
                               onClick={() => handleRemoveFile('main', index)}
@@ -345,7 +353,7 @@ const StartRFQPage = () => {
                         <div className="border-2 border-dashed border-gray-200 hover:border-[#4881F8] bg-gray-50 hover:bg-blue-50/50 rounded-[2.5rem] p-16 text-center transition-all cursor-pointer relative group/upload">
                            <input
                              type="file"
-                             accept=".stl,.step,.stp,.iges,.obj,.3mf,.dxf,.dwg,.pdf"
+                             accept=".stl,.step,.stp,.pdf,.dxf,.dwg,.png,.jpg,.jpeg,.svg,.iges,.obj,.3mf"
                              onChange={(e) => handleFileUpload(e.target.files[0], 'main', index)}
                              className="absolute inset-0 opacity-0 cursor-pointer"
                            />
@@ -353,8 +361,8 @@ const StartRFQPage = () => {
                               <div className="w-20 h-20 bg-white rounded-[1.8rem] shadow-xl flex items-center justify-center text-blue-500 group-hover/upload:scale-110 transition-transform">
                                 {uploading ? <Loader2 size={32} className="animate-spin" /> : <Upload size={32} />}
                               </div>
-                              <p className="text-xl font-black text-[#01364a]">Import Geometry</p>
-                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Supports STL, STEP, PARASOLID (MAX 150MB)</p>
+                              <p className="text-xl font-black text-[#01364a]">Import Geometry or Drawing</p>
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">STL, STEP, PDF, DXF, DWG, PNG (MAX 150MB)</p>
                            </div>
                         </div>
                       )}

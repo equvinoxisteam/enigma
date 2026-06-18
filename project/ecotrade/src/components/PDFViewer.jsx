@@ -1,64 +1,47 @@
 import React, { useState } from 'react';
-import { Loader2, AlertCircle, Download, FileText } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { normalizeFileUrl, getFileName } from '../utils/fileUtils';
+import FileViewerFrame from './FileViewerFrame';
 
-const PDFViewer = ({ fileUrl, height = '500px' }) => {
+const PDFViewer = ({ fileUrl, fileName, height = '400px' }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const normalizedUrl = normalizeFileUrl(fileUrl);
-  const fileName = getFileName(fileUrl);
+  const displayName = fileName || getFileName(fileUrl);
+  const pdfSrc = `${normalizedUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`;
 
   return (
-    <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ height }}>
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-          <div className="text-center">
-            <Loader2 className="animate-spin text-[#4881F8] mx-auto mb-2" size={32} />
-            <p className="text-sm text-gray-600">Loading PDF...</p>
+    <FileViewerFrame fileName={displayName} height={height}>
+      <div className="relative w-full h-full bg-gray-100">
+        {loading && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+            <div className="text-center">
+              <Loader2 className="animate-spin text-[#4881F8] mx-auto mb-2" size={32} />
+              <p className="text-sm text-gray-600">Loading PDF...</p>
+            </div>
           </div>
-        </div>
-      )}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-          <div className="text-center p-6">
-            <AlertCircle className="text-amber-500 mx-auto mb-2" size={32} />
-            <p className="text-sm text-gray-600 mb-4">{error}</p>
-            <a
-              href={normalizedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#4881F8] text-white rounded-lg text-sm font-medium hover:bg-[#3b6fe0]"
-            >
-              <Download size={16} />
-              Download PDF
-            </a>
+        )}
+        {error ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+            <div className="text-center p-6">
+              <AlertCircle className="text-amber-500 mx-auto mb-2" size={32} />
+              <p className="text-sm text-gray-600">{error}</p>
+            </div>
           </div>
-        </div>
-      )}
-      <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200">
-        <FileText size={16} className="text-red-500" />
-        <span className="text-sm font-medium text-gray-700 truncate">{fileName}</span>
-        <a
-          href={normalizedUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto text-xs text-[#4881F8] hover:underline flex items-center gap-1"
-        >
-          <Download size={12} /> Open
-        </a>
+        ) : (
+          <iframe
+            src={pdfSrc}
+            title={displayName}
+            className="w-full h-full border-0 block"
+            onLoad={() => setLoading(false)}
+            onError={() => {
+              setLoading(false);
+              setError('Unable to display PDF preview.');
+            }}
+          />
+        )}
       </div>
-      <iframe
-        src={`${normalizedUrl}#toolbar=1`}
-        title={fileName}
-        className="w-full border-0"
-        style={{ height: `calc(${height} - 40px)` }}
-        onLoad={() => setLoading(false)}
-        onError={() => {
-          setLoading(false);
-          setError('Unable to display PDF inline. Use the download link.');
-        }}
-      />
-    </div>
+    </FileViewerFrame>
   );
 };
 
