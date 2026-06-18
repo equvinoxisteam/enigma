@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "build:prod": "vite build --mode production",
-    "copy:staircase": "node scripts/copy-staircase.mjs",
-    "prebuild": "node scripts/copy-staircase.mjs",
+    "copy:viewer-assets": "node scripts/copy-viewer-assets.mjs",
+    "prebuild": "node scripts/copy-viewer-assets.mjs",
+    "postbuild": "node scripts/copy-serve-config.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "serve -s dist -l tcp://0.0.0.0:${PORT:-3000}"
+    "start": "serve -s dist -c dist/serve.json -l tcp://0.0.0.0:${PORT:-3000}"
   },
   "dependencies": {
     "serve": "^14.2.4",

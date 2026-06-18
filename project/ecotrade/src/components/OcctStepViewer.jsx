@@ -5,6 +5,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { getViewerFetchPath } from '../utils/fileUtils';
 import { buildStepMesh } from '../utils/stepMeshBuilder';
 import { addLabeledAxes } from '../utils/threeAxisHelper';
+import { loadOcct } from '../utils/occtLoader';
 import axiosInstance from '../api/axios';
 import FileViewerFrame from './FileViewerFrame';
 
@@ -30,8 +31,7 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor =
 
         const fetchPath = getViewerFetchPath(fileUrl);
         const response = await axiosInstance.get(fetchPath, { responseType: 'arraybuffer' });
-        const occtimportjs = (await import('occt-import-js')).default;
-        const occt = await occtimportjs();
+        const occt = await loadOcct();
         const result = occt.ReadStepFile(new Uint8Array(response.data), null);
 
         if (!result?.meshes?.length) {

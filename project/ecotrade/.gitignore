@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 .env
 .env.production
+
+# Generated viewer assets (copied during prebuild)
+public/occt/
+public/staircase/staircase.js
+public/staircase/staircase.wasm
+public/staircase/staircase.worker.js

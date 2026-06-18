@@ -1,7 +1,7 @@
 import React, { useId, useEffect, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { getViewerFetchPath, getFileName } from '../utils/fileUtils';
-import { loadStaircaseModule } from '../utils/staircaseLoader';
+import { loadStaircaseModule, isStaircaseAvailable } from '../utils/staircaseLoader';
 import axiosInstance from '../api/axios';
 import FileViewerFrame from './FileViewerFrame';
 import OcctStepViewer from './OcctStepViewer';
@@ -26,6 +26,11 @@ const StaircaseViewer = ({ fileUrl, fileName, height = '400px', backgroundColor 
         setLoading(true);
         setError(null);
         setUseFallback(false);
+
+        const staircaseReady = await isStaircaseAvailable();
+        if (!staircaseReady) {
+          throw new Error('Staircase viewer assets are not installed');
+        }
 
         await loadStaircaseModule();
         if (cancelled) return;

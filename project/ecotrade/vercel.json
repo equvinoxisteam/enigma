@@ -1,10 +1,25 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/((?!assets/|staircase/|occt/|uploads/|.*\\..*).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/staircase/(.*)\\.wasm",
+      "headers": [
+        { "key": "Content-Type", "value": "application/wasm" }
+      ]
+    },
+    {
+      "source": "/occt/(.*)\\.wasm",
+      "headers": [
+        { "key": "Content-Type", "value": "application/wasm" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)\\.wasm",
       "headers": [
         { "key": "Content-Type", "value": "application/wasm" }
       ]

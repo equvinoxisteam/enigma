@@ -2,6 +2,7 @@ const base = import.meta.env.BASE_URL || '/';
 const STAIRCASE_BASE = `${base.endsWith('/') ? base : `${base}/`}staircase`;
 
 let loadPromise = null;
+let availabilityPromise = null;
 
 const appendScript = (src) =>
   new Promise((resolve, reject) => {
@@ -34,10 +35,47 @@ const waitForInit = (timeoutMs = 30000) =>
     tick();
   });
 
-export const loadStaircaseModule = () => {
+export const getStaircaseBaseUrl = () => STAIRCASE_BASE;
+
+export const isStaircaseAvailable = async () => {
+  if (availabilityPromise) return availabilityPromise;
+
+  availabilityPromise = (async () => {
+    try {
+      const manifestRes = await fetch(`${STAIRCASE_BASE}/manifest.json`, { cache: 'no-store' });
+      if (manifestRes.ok) {
+        const manifest = await manifestRes.json();
+        return Boolean(manifest.available);
+      }
+    } catch {
+      /* fall through to direct probe */
+    }
+
+    try {
+      const res = await fetch(`${STAIRCASE_BASE}/staircase.js`, { method: 'GET', cache: 'no-store' });
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok) return false;
+      if (contentType.includes('text/html')) return false;
+      const snippet = await res.clone().text();
+      return snippet.trimStart().startsWith('var ') || snippet.includes('createStaircaseModule');
+    } catch {
+      return false;
+    }
+  })();
+
+  return availabilityPromise;
+};
+
+export const loadStaircaseModule = async () => {
   if (window.Staircase?.initialized) {
-    return Promise.resolve(window.Staircase);
+    return window.Staircase;
   }
+
+  const available = await isStaircaseAvailable();
+  if (!available) {
+    throw new Error('Staircase viewer assets are not installed');
+  }
+
   if (loadPromise) return loadPromise;
 
   loadPromise = appendScript(`${STAIRCASE_BASE}/staircase.js`)
@@ -50,5 +88,3 @@ export const loadStaircaseModule = () => {
 
   return loadPromise;
 };
-
-export const getStaircaseBaseUrl = () => STAIRCASE_BASE;
