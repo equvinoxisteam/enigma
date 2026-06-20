@@ -57,16 +57,13 @@ const loginUser = async (req, res) => {
           }
         });
       } else {
-        let needsSave = false;
-        if (!user.isAdmin) {
-          user.isAdmin = true;
-          needsSave = true;
-        }
-        if (!user.isEmailVerified) {
-          user.isEmailVerified = true;
-          needsSave = true;
-        }
-        if (needsSave) await user.save();
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { isAdmin: true, isEmailVerified: true, status: 'ACTIVE' } }
+        );
+        user.isAdmin = true;
+        user.isEmailVerified = true;
+        user.status = 'ACTIVE';
       }
     } else {
       user = await User.findOne({ email: normalizedEmail });
@@ -81,7 +78,18 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const passwordMatches = isAdminLogin || await bcrypt.compare(password, user.password);
+    let passwordMatches = isAdminLogin;
+    if (!isAdminLogin) {
+      try {
+        passwordMatches = await bcrypt.compare(password, user.password);
+      } catch (compareError) {
+        console.error('Password compare failed for', normalizedEmail, compareError.message);
+        return res.status(401).json({
+          message: 'Account password needs reset. Use Forgot Password to set a new password.'
+        });
+      }
+    }
+
     if (!passwordMatches) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }

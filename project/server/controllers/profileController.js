@@ -2,6 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { formatUserResponse } = require('../utils/userResponse');
 const { applyPendingPlanChanges, getSubscriptionUsage } = require('../utils/subscriptionUtils');
+const { sanitizePublicManufacturerProfile } = require('../utils/publicProfileUtils');
 
 // @desc    Get user profile
 // @route   GET /api/profile
@@ -177,7 +178,7 @@ const getPublicManufacturerProfile = async (req, res) => {
 
     res.json({
       success: true,
-      data: user
+      data: sanitizePublicManufacturerProfile(user)
     });
   } catch (error) {
     console.error('Get public manufacturer profile error:', error);

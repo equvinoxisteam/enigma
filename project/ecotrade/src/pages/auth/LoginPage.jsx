@@ -43,7 +43,9 @@ const LoginPage = () => {
       const result = await login({ email: formData.email, password: formData.password, rememberMe });
       if (result.success) {
         showSuccess('Welcome back');
-        navigate(result.user?.isAdmin ? '/admin' : '/dashboard');
+        // Ensure token is persisted before navigation
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        navigate(result.user?.isAdmin ? '/admin' : '/dashboard', { replace: true });
       } else {
         showError(result.error || 'Login failed');
       }

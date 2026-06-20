@@ -1,6 +1,7 @@
 const RFQ = require('../models/RFQ');
 const User = require('../models/User');
 const { hasFeature, FEATURE_KEYS } = require('../config/planFeatures');
+const { sanitizePublicManufacturerProfile } = require('../utils/publicProfileUtils');
 
 const PLAN_RANK_SWITCH = {
   $switch: {
@@ -232,7 +233,7 @@ const searchManufacturersController = async (req, res) => {
 
     res.json({
       success: true,
-      data: manufacturers,
+      data: manufacturers.map((m) => sanitizePublicManufacturerProfile(m)),
       pagination: {
         total,
         page: parseInt(page),

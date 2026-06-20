@@ -54,8 +54,10 @@ const DashboardPage = () => {
   const [newMatchingRFQs, setNewMatchingRFQs] = useState([]);
 
   useEffect(() => {
+    const token = localStorage.getItem('token') || user?.token;
+    if (!token) return;
     fetchDashboardData();
-  }, [userType]);
+  }, [userType, user?.token]);
 
   const fetchDashboardData = async () => {
     try {

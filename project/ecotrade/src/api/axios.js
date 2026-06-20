@@ -45,23 +45,29 @@ axiosInstance.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       const requestUrl = error.config?.url || '';
       const isAuthRequest = requestUrl.includes('/api/auth/login') || requestUrl.includes('/api/auth/register');
+      const message = error.response?.data?.message || '';
 
-      // Don't force redirect for expected auth failures (invalid credentials / unverified email)
       if (isAuthRequest) {
         return Promise.reject(error);
       }
 
-      // Handle unauthorized access - clear user data
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      // Only redirect if not already on auth pages
-      if (!window.location.pathname.includes('/role-selection') && 
-          !window.location.pathname.includes('/login') &&
-          !window.location.pathname.includes('/register') &&
-          !window.location.pathname.includes('/verify-email') &&
-          !window.location.pathname.includes('/forgot-password') &&
-          !window.location.pathname.includes('/reset-password')) {
-        window.location.href = '/role-selection';
+      // Don't wipe session on verification/feature edge cases during dashboard load
+      const keepSession =
+        message.includes('Email not verified') ||
+        message.includes('plan does not include') ||
+        requestUrl.includes('/api/search/recommendations');
+
+      if (!keepSession) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        if (!window.location.pathname.includes('/role-selection') &&
+            !window.location.pathname.includes('/login') &&
+            !window.location.pathname.includes('/register') &&
+            !window.location.pathname.includes('/verify-email') &&
+            !window.location.pathname.includes('/forgot-password') &&
+            !window.location.pathname.includes('/reset-password')) {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

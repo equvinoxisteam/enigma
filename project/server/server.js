@@ -211,8 +211,14 @@ app.get('/', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error occurred:', err.stack);
-  
-  // Log more details in development
+
+  if (err.message && err.message.startsWith('CORS:')) {
+    return res.status(403).json({
+      message: 'Origin not allowed',
+      error: isDevelopment ? err.message : 'CORS blocked'
+    });
+  }
+
   if (isDevelopment) {
     console.error('Request details:', {
       method: req.method,
