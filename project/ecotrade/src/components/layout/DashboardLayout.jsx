@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Menu, X, Bell, User, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check, Shield
+  Menu, X, Bell, LogOut, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, Check, Shield,
+  LayoutDashboard, UserCircle, Building2, Layers, CheckSquare, Mail, BarChart3, Users, PlusCircle, FileStack, Star, CreditCard
 } from 'lucide-react';
 import { getEffectivePlanType } from '../../config/planFeatures';
 import { useAuth } from '../../contexts/AuthContext';
@@ -138,29 +139,29 @@ const DashboardLayout = ({ children }) => {
   const planLabel = userType === 'BUYER' ? 'BUYER FREE' : getEffectivePlanType(user);
 
   const commonMenuItems = [
-    { label: 'My Feed', path: '/dashboard' },
-    { label: 'My Profile', path: '/profile' },
-    { label: 'Company Profile', path: '/company-profile' }
+    { label: 'My Feed', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'My Profile', path: '/profile', icon: UserCircle },
+    { label: 'Company Profile', path: '/company-profile', icon: Building2 }
   ];
 
   const manufacturerMenuItems = [
-    { label: 'RFQ Pool', path: '/rfqs-pool' },
-    { label: 'Accepted RFQs', path: '/accepted-rfqs' },
-    { label: 'Your Invitations', path: '/invitations' },
-    { label: 'Analytics', path: '/analytics' }
+    { label: 'RFQ Pool', path: '/rfqs-pool', icon: Layers },
+    { label: 'Accepted RFQs', path: '/accepted-rfqs', icon: CheckSquare },
+    { label: 'Your Invitations', path: '/invitations', icon: Mail },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 }
   ];
 
   const buyerMenuItems = [
-    { label: 'Manufacturer Pool', path: '/manufacturers-pool' },
-    { label: 'Create RFQ', path: '/start-rfq' },
-    { label: 'My RFQs', path: '/my-rfqs' },
-    { label: 'My Manufacturers', path: '/my-manufacturers' }
+    { label: 'Manufacturer Pool', path: '/manufacturers-pool', icon: Users },
+    { label: 'Create RFQ', path: '/start-rfq', icon: PlusCircle },
+    { label: 'My RFQs', path: '/my-rfqs', icon: FileStack },
+    { label: 'My Manufacturers', path: '/my-manufacturers', icon: Star }
   ];
 
   const supportMenuItems = [
-    { label: 'Pricing', path: '/pricing' },
-    { label: 'Settings', path: '/settings' },
-    { label: 'Help', path: '/help' }
+    { label: 'Pricing', path: '/pricing', icon: CreditCard },
+    { label: 'Settings', path: '/settings', icon: Settings },
+    { label: 'Help', path: '/help', icon: HelpCircle }
   ];
 
   const isActive = (path) => {
@@ -169,6 +170,7 @@ const DashboardLayout = ({ children }) => {
   };
 
   const renderNavLinks = (items) => items.map((item) => {
+    const Icon = item.icon;
     const active = isActive(item.path);
     return (
       <Link
@@ -176,27 +178,33 @@ const DashboardLayout = ({ children }) => {
         to={item.path}
         title={item.label}
         className={`
-          block py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-          ${sidebarOpen ? 'px-3.5' : 'px-2 text-center text-xs'}
+          flex items-center rounded-xl text-sm font-medium transition-all duration-200
+          ${sidebarOpen ? 'gap-3 py-2.5 px-3.5' : 'justify-center py-3 px-0'}
           ${active
-            ? 'bg-[#4881F8] text-white shadow-md shadow-blue-500/20'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-[#01364a]'
+            ? 'bg-[#4881F8] text-white shadow-md shadow-blue-500/30'
+            : 'text-gray-400 hover:bg-white/10 hover:text-white'
           }
         `}
       >
-        {sidebarOpen ? item.label : item.label.split(' ')[0]}
+        {sidebarOpen ? (
+          <span className="truncate">{item.label}</span>
+        ) : (
+          <Icon size={20} className="flex-shrink-0" />
+        )}
       </Link>
     );
   });
 
-  const renderSection = (title, items) => (
+  const renderSection = (title, items, showDivider = false) => (
     <div>
       {sidebarOpen && (
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-3.5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 px-3.5">
           {title}
         </p>
       )}
-      {!sidebarOpen && <div className="h-3" />}
+      {!sidebarOpen && showDivider && (
+        <div className="border-t border-gray-800 mb-2" />
+      )}
       <div className="space-y-0.5">{renderNavLinks(items)}</div>
     </div>
   );
@@ -217,8 +225,8 @@ const DashboardLayout = ({ children }) => {
       <aside
         className={`
           fixed z-40 flex flex-col
-          bg-white/95 backdrop-blur-md border border-gray-200/80
-          shadow-[0_8px_40px_rgba(15,23,42,0.08)]
+          bg-[#0a0a0a] text-white border border-gray-800/80
+          shadow-[0_8px_40px_rgba(0,0,0,0.35)]
           rounded-2xl transition-all duration-300 ease-in-out
           ${isMobile
             ? `inset-y-0 left-0 rounded-none border-l-0 border-y-0 w-64 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
@@ -228,7 +236,6 @@ const DashboardLayout = ({ children }) => {
         style={isMobile ? { height: '100vh' } : { width: sidebarWidth }}
       >
         <div className="h-full flex flex-col overflow-hidden p-3">
-          {/* Logo */}
           <div className={`flex items-center mb-4 ${sidebarOpen ? 'justify-between px-1' : 'justify-center'}`}>
             <Link to="/dashboard" className="flex items-center min-w-0">
               <EnigmaLogo size={28} showText={sidebarOpen} />
@@ -236,7 +243,7 @@ const DashboardLayout = ({ children }) => {
             {!isMobile && sidebarOpen && (
               <button
                 onClick={toggleSidebar}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
               >
@@ -248,7 +255,7 @@ const DashboardLayout = ({ children }) => {
           {!isMobile && !sidebarOpen && (
             <button
               onClick={toggleSidebar}
-              className="mb-3 p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors mx-auto"
+              className="mb-3 p-2 rounded-xl text-gray-500 hover:text-white hover:bg-white/10 transition-colors mx-auto"
               title="Expand sidebar"
               aria-label="Expand sidebar"
             >
@@ -256,31 +263,38 @@ const DashboardLayout = ({ children }) => {
             </button>
           )}
 
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden space-y-5 scrollbar-thin pr-0.5">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 scrollbar-thin pr-0.5">
             {renderSection('Common', commonMenuItems)}
-            {isManufacturer && renderSection('Manufacturers', manufacturerMenuItems)}
-            {isBuyer && renderSection('Buyers', buyerMenuItems)}
-            {renderSection('Support', supportMenuItems)}
+            {isManufacturer && renderSection('Manufacturers', manufacturerMenuItems, true)}
+            {isBuyer && renderSection('Buyers', buyerMenuItems, true)}
+            {renderSection('Support', supportMenuItems, true)}
 
             {user?.isAdmin && (
               <div>
                 {sidebarOpen && (
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-3.5">Admin</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 px-3.5">Admin</p>
                 )}
+                {!sidebarOpen && <div className="h-2 border-t border-gray-800/80 mt-2 pt-2" />}
                 <Link
                   to="/admin"
-                  className={`block py-2.5 rounded-xl text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors ${sidebarOpen ? 'px-3.5' : 'px-2 text-center text-xs'}`}
+                  title="Admin Panel"
+                  className={`flex items-center rounded-xl text-sm font-medium text-amber-400 hover:bg-white/10 transition-colors ${sidebarOpen ? 'gap-3 py-2.5 px-3.5' : 'justify-center py-3'}`}
                 >
-                  {sidebarOpen ? 'Admin Panel' : 'Admin'}
+                  {sidebarOpen ? (
+                    <span>Admin Panel</span>
+                  ) : (
+                    <Shield size={20} className="flex-shrink-0" />
+                  )}
                 </Link>
               </div>
             )}
 
             <button
               onClick={handleLogout}
-              className={`w-full py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors ${sidebarOpen ? 'px-3.5 text-left' : 'px-2 text-center text-xs'}`}
+              title="Logout"
+              className={`w-full flex items-center rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors ${sidebarOpen ? 'gap-3 py-2.5 px-3.5' : 'justify-center py-3'}`}
             >
-              {sidebarOpen ? 'Logout' : 'Out'}
+              {sidebarOpen ? <span>Logout</span> : <LogOut size={20} className="flex-shrink-0" />}
             </button>
           </nav>
         </div>
