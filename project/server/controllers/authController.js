@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const emailService = require('../emailService/EmailService');
 const { getEffectivePlanType, PLAN_TYPES } = require('../config/planFeatures');
 const { formatUserResponse } = require('../utils/userResponse');
+const { getAdminCredentials } = require('../utils/envUtils');
 
 const bootstrapAdminUser = async (email, plainPassword) => {
   const salt = await bcrypt.genSalt(10);
@@ -54,14 +55,13 @@ const loginUser = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+    const { email: adminEmail, password: adminPassword } = getAdminCredentials();
 
     const isAdminLogin = Boolean(
       adminEmail &&
       adminPassword &&
       normalizedEmail === adminEmail &&
-      String(password) === adminPassword
+      String(password).trim() === adminPassword
     );
 
     if (isAdminLogin) {

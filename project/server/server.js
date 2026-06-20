@@ -179,9 +179,13 @@ app.use('/uploads', (req, res, next) => {
 // Health check route with environment info
 app.get('/api/health', (req, res) => {
   let storage = 'local';
+  let adminConfigured = false;
   try {
     const { getStorageMode } = require('./utils/s3Upload');
     storage = getStorageMode();
+  } catch { /* ignore */ }
+  try {
+    adminConfigured = require('./utils/envUtils').getAdminCredentials().configured;
   } catch { /* ignore */ }
 
   res.json({
@@ -189,6 +193,7 @@ app.get('/api/health', (req, res) => {
     message: 'Server is running',
     environment: process.env.NODE_ENV || 'development',
     storage,
+    adminConfigured,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0'
   });
