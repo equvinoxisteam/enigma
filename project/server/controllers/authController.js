@@ -17,18 +17,20 @@ const loginUser = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    
-    // Check for admin login (from environment)
-    const isAdminLogin = (
-      normalizedEmail === process.env.ADMIN_EMAIL?.toLowerCase() &&
-      password === process.env.ADMIN_PASSWORD
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    const isAdminLogin = Boolean(
+      adminEmail &&
+      adminPassword &&
+      normalizedEmail === adminEmail &&
+      password === adminPassword
     );
 
     let user;
     if (isAdminLogin) {
       user = await User.findOne({ email: normalizedEmail });
-      
-      // If admin user doesn't exist in DB, create it
+
       if (!user) {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -41,33 +43,57 @@ const loginUser = async (req, res) => {
           address: 'Admin Center',
           city: 'Admin',
           state: 'Admin',
-          zipCode: '00000',
+          zipCode: '400001',
+          country: 'India',
           userType: 'HYBRID',
           isAdmin: true,
           isEmailVerified: true,
-          status: 'ACTIVE'
+          status: 'ACTIVE',
+          subscription: {
+            planType: PLAN_TYPES.ENTERPRISE,
+            status: 'ACTIVE',
+            billingCycle: 'YEARLY',
+            startsAt: new Date()
+          }
         });
-      } else if (!user.isAdmin) {
-        // Upgrade existing user to Admin if credentials match .env
-        user.isAdmin = true;
-        await user.save();
+      } else {
+        let needsSave = false;
+        if (!user.isAdmin) {
+          user.isAdmin = true;
+          needsSave = true;
+        }
+        if (!user.isEmailVerified) {
+          user.isEmailVerified = true;
+          needsSave = true;
+        }
+        if (needsSave) await user.save();
       }
     } else {
       user = await User.findOne({ email: normalizedEmail });
     }
 
-    if (user && (isAdminLogin || (await bcrypt.compare(password, user.password)))) {
-      if (!user.isEmailVerified) {
-        return res.status(401).json({ 
-          message: 'Please verify your email address before logging in',
-          requiresVerification: true 
-        });
-      }
-
-      return res.json(formatUserResponse(user, generateToken(user._id)));
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user.password) {
+      console.error('Login failed: user has no password hash', normalizedEmail);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const passwordMatches = isAdminLogin || await bcrypt.compare(password, user.password);
+    if (!passwordMatches) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    if (!isAdminLogin && !user.isEmailVerified) {
+      return res.status(401).json({
+        message: 'Please verify your email address before logging in',
+        requiresVerification: true
+      });
+    }
+
+    return res.json(formatUserResponse(user, generateToken(user._id)));
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ message: 'Server error' });

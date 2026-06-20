@@ -40,8 +40,16 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    const productionFallbackOrigins = isProduction ? [
+      'https://enigma.equinoxis.com',
+      'https://enigma.equvinoxis.com',
+      'https://www.enigma.equinoxis.com',
+      'https://www.enigma.equvinoxis.com',
+    ] : [];
+
     const allowedOrigins = [
       ...envOrigins,
+      ...productionFallbackOrigins,
       process.env.FRONTEND_URL,
       process.env.CLIENT_URL,
       // Development URLs
@@ -60,8 +68,8 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log(`CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.error(`CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
     }
   },
   credentials: true,
