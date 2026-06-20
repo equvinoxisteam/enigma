@@ -3,11 +3,12 @@ const { getEffectivePlanType } = require('../config/planFeatures');
 const calculateProfileCompleteness = (user) => {
   if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
     let score = 0;
-    if (user.manufacturingTypes?.length > 0) score += 20;
-    if (user.maxDimensions && (user.maxDimensions.height > 0 || user.maxDimensions.width > 0 || user.maxDimensions.length > 0)) score += 20;
-    if (user.facilityPhotos?.length > 0) score += 15;
-    if (user.primaryMaterials?.length > 0) score += 15;
-    if (user.certifications?.length > 0) score += 15;
+    if (Array.isArray(user.manufacturingTypes) && user.manufacturingTypes.length > 0) score += 20;
+    const dims = user.maxDimensions;
+    if (dims && typeof dims === 'object' && (dims.height > 0 || dims.width > 0 || dims.length > 0)) score += 20;
+    if (Array.isArray(user.facilityPhotos) && user.facilityPhotos.length > 0) score += 15;
+    if (Array.isArray(user.primaryMaterials) && user.primaryMaterials.length > 0) score += 15;
+    if (Array.isArray(user.certifications) && user.certifications.length > 0) score += 15;
     if (user.gstNumber) score += 15;
     return score;
   }

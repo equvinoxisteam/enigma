@@ -6,6 +6,43 @@ const emailService = require('../emailService/EmailService');
 const { getEffectivePlanType, PLAN_TYPES } = require('../config/planFeatures');
 const { formatUserResponse } = require('../utils/userResponse');
 
+const bootstrapAdminUser = async (email, plainPassword) => {
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(plainPassword, salt);
+
+  return User.findOneAndUpdate(
+    { email },
+    {
+      $set: {
+        fullName: 'Platform Admin',
+        isAdmin: true,
+        isEmailVerified: true,
+        status: 'ACTIVE',
+        password: hashedPassword,
+        userType: 'HYBRID',
+        manufacturerStatus: 'ACTIVE',
+        'subscription.planType': PLAN_TYPES.ENTERPRISE,
+        'subscription.status': 'ACTIVE',
+        'subscription.billingCycle': 'YEARLY',
+        'subscription.startsAt': new Date(),
+        'subscription.pendingPlanType': null,
+        'subscription.pendingPlanEffectiveAt': null
+      },
+      $setOnInsert: {
+        email,
+        phoneNumber: '0000000000',
+        companyName: 'Enigma Admin',
+        address: 'Admin Center',
+        city: 'Admin',
+        state: 'Admin',
+        zipCode: '400001',
+        country: 'India'
+      }
+    },
+    { upsert: true, new: true, runValidators: false, setDefaultsOnInsert: true }
+  ).select('-passwordResetToken -emailVerificationToken');
+};
+
 // @desc    Authenticate user
 // @route   POST /api/auth/login
 const loginUser = async (req, res) => {
@@ -18,56 +55,31 @@ const loginUser = async (req, res) => {
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
 
     const isAdminLogin = Boolean(
       adminEmail &&
       adminPassword &&
       normalizedEmail === adminEmail &&
-      password === adminPassword
+      String(password) === adminPassword
     );
 
-    let user;
     if (isAdminLogin) {
-      user = await User.findOne({ email: normalizedEmail });
-
-      if (!user) {
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-        user = await User.create({
-          fullName: 'Platform Admin',
-          email: normalizedEmail,
-          password: hashedPassword,
-          phoneNumber: '0000000000',
-          companyName: 'Enigma Admin',
-          address: 'Admin Center',
-          city: 'Admin',
-          state: 'Admin',
-          zipCode: '400001',
-          country: 'India',
-          userType: 'HYBRID',
-          isAdmin: true,
-          isEmailVerified: true,
-          status: 'ACTIVE',
-          subscription: {
-            planType: PLAN_TYPES.ENTERPRISE,
-            status: 'ACTIVE',
-            billingCycle: 'YEARLY',
-            startsAt: new Date()
-          }
+      try {
+        const adminUser = await bootstrapAdminUser(normalizedEmail, adminPassword);
+        if (!adminUser?._id) {
+          return res.status(500).json({ message: 'Failed to initialize admin account' });
+        }
+        return res.json(formatUserResponse(adminUser, generateToken(adminUser._id)));
+      } catch (adminError) {
+        console.error('Admin login bootstrap error:', adminError);
+        return res.status(500).json({
+          message: 'Admin login failed during account setup. Check server logs or reset the admin user in the database.'
         });
-      } else {
-        await User.updateOne(
-          { _id: user._id },
-          { $set: { isAdmin: true, isEmailVerified: true, status: 'ACTIVE' } }
-        );
-        user.isAdmin = true;
-        user.isEmailVerified = true;
-        user.status = 'ACTIVE';
       }
-    } else {
-      user = await User.findOne({ email: normalizedEmail });
     }
+
+    let user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
