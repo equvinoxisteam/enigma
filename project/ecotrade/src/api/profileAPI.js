@@ -40,6 +40,11 @@ export const profileAPI = {
   toggleSavedManufacturer: async (manufacturerId) => {
     const response = await axiosInstance.post('/api/profile/saved-manufacturers', { manufacturerId });
     return response.data;
+  },
+
+  getSubscriptionUsage: async () => {
+    const response = await axiosInstance.get('/api/profile/subscription-usage');
+    return response.data;
   }
 };
 

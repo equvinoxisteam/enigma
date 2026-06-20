@@ -4,6 +4,7 @@ const {
   getUsers,
   getStats,
   upgradeUser,
+  manageSubscription,
   updateStatus,
   getUpgradeRequests,
   approveUpgradeRequest,
@@ -23,8 +24,8 @@ router.get('/stats', protect, admin, getStats);
 // @route   PUT /api/admin/users/:id/upgrade
 router.put('/users/:id/upgrade', protect, admin, upgradeUser);
 
-// @desc    Update user status (Suspend/Activate)
-// @route   PUT /api/admin/users/:id/status
+router.put('/users/:id/subscription', protect, admin, manageSubscription);
+
 router.put('/users/:id/status', protect, admin, updateStatus);
 
 // @route   GET /api/admin/upgrade-requests

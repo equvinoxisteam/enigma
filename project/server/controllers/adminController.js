@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const UpgradeRequest = require('../models/UpgradeRequest');
+const { PLAN_TYPES } = require('../config/planFeatures');
+const {
+  activatePlan,
+  schedulePlanDowngrade,
+  isDowngrade,
+  applyPendingPlanChanges
+} = require('../utils/subscriptionUtils');
 
 // @desc    Get all users for admin
 // @route   GET /api/admin/users
@@ -49,10 +56,14 @@ const upgradeUser = async (req, res) => {
     }
 
     if (planType) {
-      user.subscription.planType = planType;
-      user.subscription.status = 'ACTIVE';
-      user.subscription.startsAt = new Date();
-      user.subscription.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+      const nextPlan = planType.toUpperCase();
+      const currentPlan = user.subscription?.planType || PLAN_TYPES.FREE;
+
+      if (isDowngrade(currentPlan, nextPlan)) {
+        schedulePlanDowngrade(user, nextPlan);
+      } else {
+        activatePlan(user, nextPlan);
+      }
     }
 
     if (userType) {
@@ -67,20 +78,73 @@ const upgradeUser = async (req, res) => {
     }
 
     if (req.body.isVerified !== undefined) {
+      user.manufacturerSettings = user.manufacturerSettings || {};
       user.manufacturerSettings.isVerified = req.body.isVerified;
     }
 
     await user.save();
 
-    // Close any pending upgrade requests for this user/plan
     await UpgradeRequest.updateMany(
       { user: user._id, status: 'PENDING' },
       { status: 'APPROVED', processedAt: new Date() }
     );
 
-    res.json({ message: 'User upgraded successfully', user });
+    res.json({ message: 'User plan updated successfully', user });
   } catch (error) {
     console.error('upgradeUser error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Manage subscription (pause / deactivate / remove / reactivate)
+// @route   PUT /api/admin/users/:id/subscription
+const manageSubscription = async (req, res) => {
+  try {
+    const { action, planType } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await applyPendingPlanChanges(user);
+
+    switch (action) {
+      case 'approve':
+      case 'activate': {
+        const next = (planType || user.subscription?.planType || PLAN_TYPES.STANDARD).toUpperCase();
+        activatePlan(user, next);
+        if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
+          user.manufacturerStatus = 'ACTIVE';
+          user.status = 'ACTIVE';
+        }
+        break;
+      }
+      case 'pause':
+        user.subscription.status = 'PAUSED';
+        user.subscription.pausedAt = new Date();
+        break;
+      case 'deactivate':
+        user.subscription.status = 'DEACTIVATED';
+        user.subscription.deactivatedAt = new Date();
+        break;
+      case 'remove':
+      case 'downgrade':
+        schedulePlanDowngrade(user, (planType || PLAN_TYPES.FREE).toUpperCase());
+        break;
+      case 'reactivate':
+        user.subscription.status = 'ACTIVE';
+        user.subscription.pausedAt = null;
+        user.subscription.deactivatedAt = null;
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid action. Use approve, pause, deactivate, remove, or reactivate.' });
+    }
+
+    await user.save();
+    res.json({ message: `Subscription ${action} applied`, user });
+  } catch (error) {
+    console.error('manageSubscription error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -136,14 +200,7 @@ const approveUpgradeRequest = async (req, res) => {
     }
 
     const planType = (req.body.planType || request.planName || 'STANDARD').toUpperCase();
-    user.subscription.planType = planType;
-    user.subscription.status = 'ACTIVE';
-    user.subscription.startsAt = new Date();
-    user.subscription.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-
-    if (['PRO', 'ENTERPRISE'].includes(planType)) {
-      user.manufacturerSettings.isVerified = true;
-    }
+    activatePlan(user, planType);
 
     if (user.userType === 'MANUFACTURER' || user.userType === 'HYBRID') {
       user.manufacturerStatus = 'ACTIVE';
@@ -186,6 +243,7 @@ module.exports = {
   getUsers,
   getStats,
   upgradeUser,
+  manageSubscription,
   updateStatus,
   getUpgradeRequests,
   approveUpgradeRequest,

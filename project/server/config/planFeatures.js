@@ -16,13 +16,20 @@ const FEATURE_KEYS = {
   MFR_DISCOVERY: 'MFR_DISCOVERY',
   CAPACITY_DISPLAY: 'CAPACITY_DISPLAY',
   VERIFIED_BADGE: 'VERIFIED_BADGE',
-  VIDEO_SLIDES: 'VIDEO_SLIDES',
+  DOCUMENTS_DISPLAY: 'DOCUMENTS_DISPLAY',
   CONCIERGE_DEALS: 'CONCIERGE_DEALS',
   AI_SEARCH: 'AI_SEARCH',
   AI_SEARCH_LIMITED: 'AI_SEARCH_LIMITED',
   RFQ_REQUEST: 'RFQ_REQUEST',
   TOP_PLACEMENT: 'TOP_PLACEMENT',
   CORPORATE_RFQS: 'CORPORATE_RFQS'
+};
+
+const PLAN_RFQ_REQUEST_LIMITS = {
+  [PLAN_TYPES.FREE]: 0,
+  [PLAN_TYPES.STANDARD]: 20,
+  [PLAN_TYPES.PRO]: 40,
+  [PLAN_TYPES.ENTERPRISE]: null
 };
 
 const PLAN_FEATURES = {
@@ -47,6 +54,7 @@ const PLAN_FEATURES = {
     [FEATURE_KEYS.INVITATION_RESPOND]: true,
     [FEATURE_KEYS.CHAT_ACCESS]: true,
     [FEATURE_KEYS.CAPACITY_DISPLAY]: true,
+    [FEATURE_KEYS.DOCUMENTS_DISPLAY]: true,
     [FEATURE_KEYS.AI_SEARCH]: true
   },
   [PLAN_TYPES.PRO]: {
@@ -57,7 +65,7 @@ const PLAN_FEATURES = {
     [FEATURE_KEYS.CHAT_ACCESS]: true,
     [FEATURE_KEYS.CAPACITY_DISPLAY]: true,
     [FEATURE_KEYS.VERIFIED_BADGE]: true,
-    [FEATURE_KEYS.VIDEO_SLIDES]: true,
+    [FEATURE_KEYS.DOCUMENTS_DISPLAY]: true,
     [FEATURE_KEYS.AI_SEARCH]: true
   },
   [PLAN_TYPES.ENTERPRISE]: {
@@ -68,7 +76,7 @@ const PLAN_FEATURES = {
     [FEATURE_KEYS.CHAT_ACCESS]: true,
     [FEATURE_KEYS.CAPACITY_DISPLAY]: true,
     [FEATURE_KEYS.VERIFIED_BADGE]: true,
-    [FEATURE_KEYS.VIDEO_SLIDES]: true,
+    [FEATURE_KEYS.DOCUMENTS_DISPLAY]: true,
     [FEATURE_KEYS.CONCIERGE_DEALS]: true,
     [FEATURE_KEYS.AI_SEARCH]: true,
     [FEATURE_KEYS.TOP_PLACEMENT]: true,
@@ -83,15 +91,33 @@ const getEffectivePlanType = (user) => {
 };
 
 const hasFeature = (user, featureKey) => {
+  if (!user) return false;
+
+  if (user.userType !== 'BUYER' && user.subscription?.status === 'PAUSED') {
+    const allowedWhenPaused = [FEATURE_KEYS.RFQ_POOL_VIEW, FEATURE_KEYS.CHAT_ACCESS];
+    if (!allowedWhenPaused.includes(featureKey)) return false;
+  }
+
+  if (user.userType !== 'BUYER' && user.subscription?.status === 'DEACTIVATED') {
+    return false;
+  }
+
   const planType = getEffectivePlanType(user);
   const planHasFeature = Boolean(PLAN_FEATURES[planType]?.[featureKey]);
 
-  if (user?.userType === 'HYBRID') {
+  if (user.userType === 'HYBRID') {
     const buyerHasFeature = Boolean(PLAN_FEATURES[PLAN_TYPES.BUYER_FREE]?.[featureKey]);
     return planHasFeature || buyerHasFeature;
   }
 
   return planHasFeature;
+};
+
+const getRfqRequestLimit = (user) => {
+  if (!user || user.userType === 'BUYER') return null;
+  const plan = getEffectivePlanType(user);
+  if (plan === PLAN_TYPES.BUYER_FREE) return null;
+  return PLAN_RFQ_REQUEST_LIMITS[plan] ?? 0;
 };
 
 const hasFullAISearch = (user) => hasFeature(user, FEATURE_KEYS.AI_SEARCH);
@@ -103,7 +129,9 @@ module.exports = {
   PLAN_TYPES,
   FEATURE_KEYS,
   PLAN_FEATURES,
+  PLAN_RFQ_REQUEST_LIMITS,
   getEffectivePlanType,
+  getRfqRequestLimit,
   hasFeature,
   hasFullAISearch,
   hasAnyAISearch

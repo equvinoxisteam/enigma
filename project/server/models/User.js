@@ -271,7 +271,7 @@ const userSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['ACTIVE', 'EXPIRED', 'PENDING', 'CANCELLED'],
+      enum: ['ACTIVE', 'EXPIRED', 'PENDING', 'CANCELLED', 'PAUSED', 'DEACTIVATED'],
       default: 'ACTIVE'
     },
     amountPaid: {
@@ -298,6 +298,23 @@ const userSchema = new mongoose.Schema({
     lastOrderId: {
       type: String,
       default: ''
+    },
+    pendingPlanType: {
+      type: String,
+      enum: ['BUYER_FREE', 'FREE', 'STANDARD', 'PRO', 'ENTERPRISE'],
+      default: null
+    },
+    pendingPlanEffectiveAt: {
+      type: Date,
+      default: null
+    },
+    pausedAt: {
+      type: Date,
+      default: null
+    },
+    deactivatedAt: {
+      type: Date,
+      default: null
     }
   },
 

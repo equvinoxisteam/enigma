@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { authAPI } from '../api/authAPI';
-import { Check, Info, Shield, Zap, Building, Play, Star, ArrowRight, MessageSquare } from 'lucide-react';
-import Button from '../components/ui/Button';
+import { Check, Building } from 'lucide-react';
 
 const PricingPage = () => {
   const { user } = useAuth();
@@ -19,75 +18,72 @@ const PricingPage = () => {
       name: 'Free',
       price: '₹0',
       period: '/yr',
-      description: 'For discovery and basic visibility',
+      description: 'Discovery and view-only access',
+      rfqLimit: 'View RFQ pool only — cannot send requests',
       features: [
         'Basic search rank',
-        'Basic company profile',
-        'Limited AI matching',
-        'No capacity display',
-        'No video/slides visibility',
-        'View RFQ Pool (View-only)'
+        'Enigma-only public profile (identity hidden)',
+        'Limited AI matching (2 results)',
+        'No capacity, images, PPT or PDF shown',
+        'Browse RFQ Pool (view-only)',
+        'View buyer invitations (accept requires paid plan)'
       ],
       cta: 'Current Plan',
-      popular: false,
-      color: 'gray'
+      popular: false
     },
     {
       id: 'STANDARD',
       name: 'Standard',
-      price: '₹1,71,000',
+      price: '₹3,42,000',
       period: '/yr',
       description: 'Essential access for active manufacturers',
+      rfqLimit: 'Up to 20 RFQ requests / year',
       features: [
-        'Basic search rank',
-        'Basic company profile',
-        'Capacity display included',
-        'Full AI-matching access',
-        'Request & Accept RFQs',
-        'Basic discovery tools'
+        'Send up to 20 RFQ requests per year',
+        'Full company profile with images',
+        'Capacity display on profile',
+        'Full AI matching',
+        'PPT & PDF documents visible',
+        'Request & accept RFQs'
       ],
-      cta: 'Upgrade Now',
-      popular: false,
-      color: 'blue'
+      cta: 'Request Upgrade',
+      popular: false
     },
     {
       id: 'PRO',
       name: 'Pro',
-      price: '₹2,61,000',
+      price: '₹5,22,000',
       period: '/yr',
       description: 'High visibility and verified trust',
+      rfqLimit: 'Up to 40 RFQ requests / year',
       features: [
-        'High search rank',
-        'Enhanced profile with media',
-        'Capacity display included',
-        'Full AI-matching access',
-        'Video & slides visibility',
-        'Verified badge',
+        'Send up to 40 RFQ requests per year',
+        'Verified badge on profile',
+        'Enhanced profile with gallery, PPT & PDF',
+        'High search rank in manufacturer pool',
+        'Full AI matching + STL search',
         'Priority support'
       ],
-      cta: 'Upgrade Now',
-      popular: true,
-      color: 'indigo'
+      cta: 'Request Upgrade',
+      popular: true
     },
     {
       id: 'ENTERPRISE',
       name: 'Enterprise',
       price: '₹15,75,000',
       period: '/yr',
-      description: 'Top placement & concierge support',
+      description: 'Top placement and concierge support',
+      rfqLimit: 'Unlimited RFQ requests',
       features: [
-        'Top slot search rank (#1)',
-        'Enhanced & highlighted profile',
-        'Capacity display included',
-        'Full AI-matching access',
-        'Video & slides full visibility',
+        'Unlimited RFQ requests',
+        'Top slot in manufacturer search (#1 rank)',
         'Verified + highlighted badge',
+        'Full gallery, PPT, PDF & capacity',
         'Exclusive corporate RFQs',
-        'Priority matching with top buyers'
+        'Concierge deals & priority buyer matching'
       ],
-      cta: 'Upgrade Now',
-      popular: false,
-      color: 'purple'
+      cta: 'Request Upgrade',
+      popular: false
     }
   ];
 
@@ -100,7 +96,7 @@ const PricingPage = () => {
         planName: selectedPlan.id,
         message: requestMessage
       });
-      showSuccess(`Request for ${selectedPlan.name} plan submitted! Our team will contact you for payment.`);
+      showSuccess(`Upgrade request for ${selectedPlan.name} submitted. Admin will review and activate your plan.`);
       setShowModal(false);
     } catch (error) {
       showError(error.response?.data?.message || 'Failed to submit request');
@@ -110,147 +106,139 @@ const PricingPage = () => {
   };
 
   const currentPlan = user?.subscription?.planType || 'FREE';
+  const isBuyerOnly = user?.userType === 'BUYER';
 
   return (
     <div className="w-full py-4 sm:py-6">
       <div className="text-center mb-10 sm:mb-16">
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#01364a] mb-4 tracking-tighter">Manufacturer & Hybrid Plans</h1>
-        <p className="text-base sm:text-xl text-gray-500 max-w-2xl mx-auto font-medium">
-          Hybrid accounts combine manufacturer + buyer features under one login, with the same pricing as manufacturer.
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#01364a] mb-4 tracking-tighter">Plans & Pricing</h1>
+        <p className="text-base sm:text-xl text-gray-500 max-w-3xl mx-auto font-medium">
+          Buyers and Hybrid accounts create RFQs. Pure manufacturers browse and request RFQs based on their plan.
+          Admin approves upgrades — downgrades include a 24-hour grace period.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
-        {plans.map((plan) => (
-          <div 
-            key={plan.id}
-            className={`relative flex flex-col bg-white rounded-2xl sm:rounded-[2.5rem] border-2 transition-all duration-300 ${
-              plan.popular ? 'border-[#4881F8] lg:scale-105 shadow-2xl z-10' : 'border-gray-100 hover:border-gray-200'
-            }`}
-          >
-            {plan.popular && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#4881F8] text-white px-6 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
-                Most Popular
+      {!isBuyerOnly && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-16">
+          {plans.map((plan) => (
+            <div
+              key={plan.id}
+              className={`relative flex flex-col bg-white rounded-2xl border-2 transition-all ${
+                plan.popular ? 'border-[#4881F8] shadow-xl z-10' : 'border-gray-100 hover:border-gray-200'
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#4881F8] text-white px-5 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+                  Most Popular
+                </div>
+              )}
+
+              <div className="p-6 pb-3">
+                <h3 className="text-xl font-black text-[#01364a]">{plan.name}</h3>
+                <p className="text-sm text-gray-400 mt-1 mb-4">{plan.description}</p>
+                <div className="flex items-baseline mb-3">
+                  <span className="text-3xl font-black text-[#01364a]">{plan.price}</span>
+                  <span className="text-gray-400 font-bold ml-1 text-sm">{plan.period}</span>
+                </div>
+                <p className="text-xs font-bold text-[#4881F8] bg-blue-50 px-3 py-2 rounded-lg">{plan.rfqLimit}</p>
               </div>
-            )}
 
-            <div className="p-8 pb-4">
-              <h3 className="text-2xl font-black text-[#01364a] mb-1">{plan.name}</h3>
-              <p className="text-sm text-gray-400 font-medium mb-6 line-clamp-1">{plan.description}</p>
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-black text-[#01364a]">{plan.price}</span>
-                <span className="text-gray-400 font-bold ml-1">{plan.period}</span>
+              <div className="px-6 pb-6 flex-1">
+                <ul className="space-y-3">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                      <Check size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="p-6 pt-0">
+                <button
+                  onClick={() => {
+                    if (plan.id === currentPlan) return;
+                    setSelectedPlan(plan);
+                    setShowModal(true);
+                  }}
+                  disabled={plan.id === currentPlan}
+                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                    plan.id === currentPlan
+                      ? 'bg-gray-100 text-gray-400 cursor-default'
+                      : plan.popular
+                      ? 'bg-[#4881F8] text-white hover:bg-blue-600'
+                      : 'bg-[#01364a] text-white hover:bg-black'
+                  }`}
+                >
+                  {plan.id === currentPlan ? 'Current Plan' : plan.cta}
+                </button>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="px-8 pb-8 flex-1">
-              <ul className="space-y-4 mb-8">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm font-bold text-gray-600">
-                    <Check size={18} className="text-blue-500 mt-0.5 shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="p-8 pt-0">
-              <button
-                onClick={() => {
-                  if (plan.id === currentPlan) return;
-                  setSelectedPlan(plan);
-                  setShowModal(true);
-                }}
-                disabled={plan.id === currentPlan}
-                className={`w-full py-4 rounded-2xl font-black text-sm transition-all ${
-                  plan.id === currentPlan 
-                    ? 'bg-gray-100 text-gray-400 cursor-default'
-                    : plan.popular
-                    ? 'bg-[#4881F8] text-white hover:bg-blue-600 shadow-xl shadow-blue-500/20'
-                    : 'bg-[#01364a] text-white hover:bg-blue-950'
-                }`}
-              >
-                {plan.id === currentPlan ? 'Current Plan' : 'Upgrade Now'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Buyer Section */}
-      <div className="bg-[#01364a] rounded-2xl sm:rounded-[3rem] p-6 sm:p-10 lg:p-12 text-white overflow-hidden relative mb-12 sm:mb-20">
-        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12">
-          <div className="lg:max-w-xl text-center lg:text-left">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-6 tracking-tight">Buyer Plan (Always Free)</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="bg-[#01364a] rounded-2xl p-6 sm:p-10 text-white mb-12">
+        <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
+          <div className="flex-1">
+            <h2 className="text-2xl sm:text-3xl font-black mb-4">Buyer Plan — Always Free</h2>
+            <p className="text-blue-100 mb-6 max-w-2xl">
+              Buyers create and publish RFQs. Manufacturers cannot create RFQs — they request bids on buyer RFQs.
+              Hybrid accounts get buyer powers plus manufacturer plan features.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
               {[
-                'Unlimited RFQ Publishing',
-                'Full AI-Matching Access',
-                'RFQ Management & Analytics',
-                'Manufacturer List Building',
-                'Vendor Block-listing',
-                'Real-time Chat Support'
-              ].map((f, i) => (
-                <div key={i} className="flex items-center gap-3 font-bold opacity-90">
-                  <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center">
-                    <Check size={14} className="text-emerald-400" />
-                  </div>
+                'Unlimited RFQ publishing',
+                'Full AI matching',
+                'Manufacturer discovery & invites',
+                'RFQ management & chat',
+                'Edit/delete RFQs before acceptance',
+                'No subscription fee'
+              ].map((f) => (
+                <div key={f} className="flex items-center gap-2 text-sm font-medium">
+                  <Check size={14} className="text-emerald-400 shrink-0" />
                   {f}
                 </div>
               ))}
             </div>
           </div>
-          <div className="w-full lg:w-96 bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 border border-white/10">
-            <h3 className="text-xl font-bold mb-4">Architecture Team?</h3>
-            <p className="text-gray-300 text-sm font-medium mb-6">
-              Get dedicated support for tender-scale procurement, custom API integrations, and white-glove onboarding for your team.
-            </p>
-            <a
-              href="mailto:support@equvinoxis.com?subject=Enterprise%20Architecture%20Team%20Inquiry"
-              className="block w-full py-4 bg-white text-[#01364a] rounded-xl font-black hover:bg-gray-100 transition-colors text-center"
-            >
-              Talk to Architecture Team
+          <div className="w-full lg:w-80 bg-white/10 rounded-2xl p-6 border border-white/10">
+            <Building size={32} className="mb-3 opacity-70" />
+            <h3 className="font-bold mb-2">Enterprise buyers?</h3>
+            <p className="text-sm text-blue-100 mb-4">Contact us for tender-scale procurement and dedicated support.</p>
+            <a href="mailto:support@equvinoxis.com" className="block text-center py-3 bg-white text-[#01364a] rounded-xl font-bold text-sm">
+              Contact Sales
             </a>
           </div>
         </div>
-        <div className="absolute top-0 right-0 p-20 opacity-10 pointer-events-none">
-          <Building size={300} />
-        </div>
       </div>
 
-      {/* Request Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-[#01364a]/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl sm:rounded-[2.5rem] w-full max-w-lg p-6 sm:p-10 shadow-2xl relative overflow-hidden">
-            <div className="relative z-10">
-              <h2 className="text-3xl font-black text-[#01364a] mb-2 tracking-tight">Request Upgrade</h2>
-              <p className="text-gray-500 font-bold mb-6">Plan: <span className="text-[#4881F8]">{selectedPlan?.name}</span></p>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-black text-gray-700 mb-2 uppercase tracking-widest">Message to Admin</label>
-                <textarea
-                  value={requestMessage}
-                  onChange={(e) => setRequestMessage(e.target.value)}
-                  placeholder="Tell us about your company or requirements..."
-                  className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 focus:outline-none transition-all h-32 font-medium"
-                ></textarea>
-              </div>
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 text-sm text-gray-600">
+        <h3 className="font-bold text-[#01364a] mb-3">How upgrades work</h3>
+        <ol className="list-decimal list-inside space-y-2">
+          <li>Request a plan from this page (Standard, Pro, or Enterprise).</li>
+          <li>Admin reviews and approves — your plan activates immediately.</li>
+          <li>Admin can pause, deactivate, or schedule removal with a <strong>24-hour buffer</strong> before downgrade.</li>
+          <li>RFQ request counts reset when a new paid plan period starts.</li>
+        </ol>
+      </div>
 
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-sm"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleUpgradeRequest}
-                  disabled={loading}
-                  className="flex-1 py-4 bg-[#4881F8] text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-500/20"
-                >
-                  {loading ? 'Submitting...' : 'Submit Request'}
-                </button>
-              </div>
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 sm:p-8 shadow-2xl">
+            <h2 className="text-2xl font-black text-[#01364a] mb-2">Request {selectedPlan?.name}</h2>
+            <p className="text-sm text-gray-500 mb-4">{selectedPlan?.rfqLimit}</p>
+            <textarea
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value)}
+              placeholder="Company details, GST, expected RFQ volume..."
+              className="w-full p-4 border border-gray-200 rounded-xl h-28 mb-4 text-sm"
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-sm">Cancel</button>
+              <button onClick={handleUpgradeRequest} disabled={loading} className="flex-1 py-3 bg-[#4881F8] text-white rounded-xl font-bold text-sm">
+                {loading ? 'Submitting...' : 'Submit Request'}
+              </button>
             </div>
           </div>
         </div>

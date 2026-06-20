@@ -5,7 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { Search, Filter, FileText, MapPin, Calendar, Eye, Box, Info, ChevronRight, AlertCircle, Shield, Zap, Globe } from 'lucide-react';
 import AIIcon from '../components/icons/AIIcon';
 import { useAuth } from '../contexts/AuthContext';
-import { hasFeature, FEATURE_KEYS } from '../config/planFeatures';
+import { hasFeature, FEATURE_KEYS, formatRfqLimit, getRfqRequestLimit } from '../config/planFeatures';
+import { profileAPI } from '../api/profileAPI';
 import Button from '../components/ui/Button';
 import CADFileViewer from '../components/CADFileViewer';
 import { getWorkpieceFileUrl } from '../utils/fileUtils';
@@ -39,6 +40,7 @@ const RFQPoolPage = () => {
   });
 
   const canRequest = hasFeature(user, FEATURE_KEYS.RFQ_RESPOND);
+  const [usage, setUsage] = useState(null);
 
   const technologyOptions = ['CNC', 'TURNING', 'MILLING', '3D_PRINTING', 'SHEET_METAL', 'DIE_CASTING', 'INJECTION_MOLDING', 'STAMPING', 'WELDING', 'ASSEMBLY', 'OTHER'];
   const partTypeOptions = ['Gear', 'Pipe', 'Bracket', 'Housing', 'Shaft', 'Bearing', 'Valve', 'Connector', 'Mount', 'Cover', 'Other'];
@@ -46,6 +48,12 @@ const RFQPoolPage = () => {
   useEffect(() => {
     fetchRFQs();
   }, [filters, pagination.page]);
+
+  useEffect(() => {
+    if (user && user.userType !== 'BUYER') {
+      profileAPI.getSubscriptionUsage().then((r) => setUsage(r.data)).catch(() => {});
+    }
+  }, [user]);
 
   const fetchRFQs = async () => {
     setLoading(true);
@@ -119,6 +127,38 @@ const RFQPoolPage = () => {
           </button>
         </div>
       </div>
+
+      {(usage || !canRequest) && (
+        <div className={`mb-6 p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+          canRequest && usage?.canRequestRfqs ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div>
+            <p className="font-bold text-[#01364a] text-sm">
+              Plan: {usage?.planType || user?.subscription?.planType || 'FREE'}
+              {usage?.status && usage.status !== 'ACTIVE' && (
+                <span className="ml-2 text-amber-700">({usage.status})</span>
+              )}
+            </p>
+            {!canRequest ? (
+              <p className="text-sm text-amber-800 mt-1">View-only on Free plan. Upgrade to Standard (20 RFQs/yr), Pro (40), or Enterprise (unlimited) to send requests.</p>
+            ) : usage?.rfqRequestsLimit !== null ? (
+              <p className="text-sm text-gray-700 mt-1">
+                RFQ requests used: <strong>{usage?.rfqRequestsUsed ?? 0}</strong> / {usage?.rfqRequestsLimit ?? formatRfqLimit(getRfqRequestLimit(user))}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-700 mt-1">Unlimited RFQ requests on your plan.</p>
+            )}
+            {usage?.pendingPlanType && (
+              <p className="text-xs text-amber-700 mt-1">Downgrade to {usage.pendingPlanType} scheduled — 24h grace period active.</p>
+            )}
+          </div>
+          {(!canRequest || !usage?.canRequestRfqs) && (
+            <Link to="/pricing" className="px-5 py-2.5 bg-[#4881F8] text-white rounded-xl font-bold text-sm text-center shrink-0">
+              Upgrade Plan
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white border border-gray-100 rounded-[2.5rem] p-6 mb-8 shadow-2xl shadow-blue-900/5">

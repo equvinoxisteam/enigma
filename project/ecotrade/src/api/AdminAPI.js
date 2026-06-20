@@ -64,6 +64,12 @@ const rejectUpgradeRequest = async (id, token) => {
   return response.data;
 };
 
+const manageSubscription = async (userId, data, token) => {
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+  const response = await axios.put(`${API_URL}/users/${userId}/subscription`, data, config);
+  return response.data;
+};
+
 export const adminAPI = {
   getDashboardStats,
   getUsers,
@@ -71,5 +77,6 @@ export const adminAPI = {
   updateStatus,
   getUpgradeRequests,
   approveUpgradeRequest,
-  rejectUpgradeRequest
+  rejectUpgradeRequest,
+  manageSubscription
 };

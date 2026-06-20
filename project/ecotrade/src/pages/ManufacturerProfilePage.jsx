@@ -37,14 +37,14 @@ const ManufacturerProfilePage = () => {
           rating: profile?.manufacturerSettings?.rating || 0,
           reviewCount: profile?.manufacturerSettings?.reviewCount || 0,
           completedRFQs: profile?.manufacturerSettings?.completedProjects || 0,
-          materials: profile?.manufacturerSettings?.materials || profile?.primaryMaterials || [],
-          machinery: profile?.manufacturerSettings?.machinery || [],
-          manufacturingTypes: profile?.manufacturerSettings?.technologies || profile?.manufacturingTypes || [],
-          certifications: profile?.certifications || [],
-          facilityPhotos: profile?.facilityPhotos || [],
-          companyPresentationUrl: profile?.companyPresentationUrl || '',
-          companyBrochurePdfUrl: profile?.companyBrochurePdfUrl || '',
-          companyProfilePdfUrl: profile?.companyProfilePdfUrl || '',
+          facilityPhotos: isFree ? [] : (profile.facilityPhotos || []),
+          companyPresentationUrl: isFree ? '' : (profile.companyPresentationUrl || ''),
+          companyBrochurePdfUrl: isFree ? '' : (profile.companyBrochurePdfUrl || ''),
+          companyProfilePdfUrl: isFree ? '' : (profile.companyProfilePdfUrl || ''),
+          materials: isFree ? [] : (profile?.manufacturerSettings?.materials || profile?.primaryMaterials || []),
+          machinery: isFree ? [] : (profile?.manufacturerSettings?.machinery || []),
+          manufacturingTypes: isFree ? [] : (profile?.manufacturerSettings?.technologies || profile?.manufacturingTypes || []),
+          certifications: isFree ? [] : (profile?.certifications || []),
           website: profile?.website || ''
         });
       } catch (error) {
@@ -71,9 +71,9 @@ const ManufacturerProfilePage = () => {
     </div>
   );
 
-  const isVerified = hasFeature(manufacturer, FEATURE_KEYS.VERIFIED_BADGE) || manufacturer.manufacturerSettings?.isVerified;
-  const showCapacity = hasFeature(manufacturer, FEATURE_KEYS.CAPACITY_DISPLAY);
-  const showVideo = hasFeature(manufacturer, FEATURE_KEYS.VIDEO_SLIDES);
+  const isVerified = !manufacturer.isFree && (hasFeature(manufacturer, FEATURE_KEYS.VERIFIED_BADGE) || manufacturer.manufacturerSettings?.isVerified);
+  const showCapacity = !manufacturer.isFree && hasFeature(manufacturer, FEATURE_KEYS.CAPACITY_DISPLAY);
+  const showDocuments = !manufacturer.isFree && hasFeature(manufacturer, FEATURE_KEYS.DOCUMENTS_DISPLAY);
 
   return (
     <div className="w-full pb-8 sm:pb-12 pt-4 sm:pt-6">
@@ -198,7 +198,7 @@ const ManufacturerProfilePage = () => {
             </section>
           )}
 
-          {!manufacturer.isFree && (manufacturer.companyPresentationUrl || manufacturer.companyBrochurePdfUrl || manufacturer.companyProfilePdfUrl) && (
+          {!manufacturer.isFree && showDocuments && (manufacturer.companyPresentationUrl || manufacturer.companyBrochurePdfUrl || manufacturer.companyProfilePdfUrl) && (
             <section className="bg-white border border-gray-100 rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-blue-900/5">
               <h2 className="text-2xl font-black text-[#01364a] mb-6 flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><FileText size={20} /></div>
@@ -236,6 +236,7 @@ const ManufacturerProfilePage = () => {
             </section>
           )}
 
+          {!manufacturer.isFree && (
           <section className="bg-white border border-gray-100 rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-blue-900/5">
              <h2 className="text-2xl font-black text-[#01364a] mb-8">Technical Proficiency</h2>
              
@@ -275,38 +276,34 @@ const ManufacturerProfilePage = () => {
                </div>
              </div>
           </section>
+          )}
 
-          {showVideo && manufacturer.manufacturerSettings?.videoSlides?.length > 0 && (
-             <section className="bg-[#01364a] rounded-[3rem] p-10 shadow-2xl overflow-hidden relative text-white">
-                <div className="relative z-10">
-                   <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
-                     <Play size={24} className="fill-current text-blue-400" />
-                     Factory Showcase
-                   </h2>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                     {manufacturer.manufacturerSettings.videoSlides.map((v, i) => (
-                       <div key={i} className="group relative aspect-video rounded-3xl overflow-hidden bg-white/5 border border-white/10">
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/60 transition-all cursor-pointer">
-                             <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform">
-                                <Play size={28} className="fill-white" />
-                             </div>
-                          </div>
-                          <div className="absolute bottom-0 p-6">
-                             <p className="font-black text-lg">{v.title || 'Production Facility'}</p>
-                          </div>
-                       </div>
-                     ))}
-                   </div>
-                </div>
-                <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
-                  <Factory size={200} />
+          {showDocuments && manufacturer.facilityPhotos?.length > 0 && (
+             <section className="bg-white border border-gray-100 rounded-2xl sm:rounded-[3rem] p-5 sm:p-8 shadow-2xl shadow-blue-900/5">
+                <h2 className="text-2xl font-black text-[#01364a] mb-6 flex items-center gap-3">
+                  <ImageIcon size={22} className="text-[#4881F8]" />
+                  Facility Gallery
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {manufacturer.facilityPhotos.map((photo, i) => (
+                    <AuthenticatedImage key={i} src={photo} alt={`Facility ${i + 1}`} className="w-full aspect-square object-cover rounded-2xl border border-gray-100" />
+                  ))}
                 </div>
              </section>
+          )}
+
+          {manufacturer.isFree && (
+            <section className="bg-blue-50 border border-blue-100 rounded-2xl p-8 text-center">
+              <Lock size={32} className="mx-auto text-blue-400 mb-4" />
+              <p className="font-bold text-[#01364a]">This manufacturer is on the Enigma Free plan.</p>
+              <p className="text-sm text-gray-600 mt-2">Full profile, gallery, PPT, PDF and capacity are visible on paid plans.</p>
+            </section>
           )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-8">
+           {!manufacturer.isFree && (
            <section className="bg-white border border-gray-100 rounded-[3rem] p-8 shadow-2xl shadow-blue-900/5">
               <h2 className="text-xl font-black text-[#01364a] mb-6 flex items-center gap-2">
                 <Award size={20} className="text-[#4881F8]" />
@@ -324,6 +321,7 @@ const ManufacturerProfilePage = () => {
                 )}
               </div>
            </section>
+           )}
 
            <div className="bg-[#4881F8] rounded-[3rem] p-10 text-white shadow-2xl shadow-blue-500/20 relative overflow-hidden group">
               <div className="relative z-10">

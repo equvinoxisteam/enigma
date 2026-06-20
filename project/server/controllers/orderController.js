@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const emailService = require('../emailService/EmailService');
 const { PLAN_TYPES } = require('../config/planFeatures');
+const { activatePlan } = require('../utils/subscriptionUtils');
 
 // @desc    Create Razorpay order
 // @route   POST /api/orders/create-razorpay-order
@@ -397,33 +398,23 @@ const verifySubscription = async (req, res) => {
       return res.status(400).json({ message: 'Invalid subscription plan' });
     }
 
-    const now = new Date();
-    const expiresAt = new Date(now);
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    const updatedUser = await User.findById(req.user._id);
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        $set: {
-          'subscription.planType': planType,
-          'subscription.status': 'ACTIVE',
-          'subscription.amountPaid': Number(amount || 0) / 100,
-          'subscription.billingCycle': 'YEARLY',
-          'subscription.startsAt': now,
-          'subscription.expiresAt': expiresAt,
-          'subscription.lastPaymentId': razorpay_payment_id,
-          'subscription.lastOrderId': razorpay_order_id
-        }
-      },
-      { new: true }
-    ).select('userType subscription');
+    activatePlan(updatedUser, planType);
+    updatedUser.subscription.amountPaid = Number(amount || 0) / 100;
+    updatedUser.subscription.lastPaymentId = razorpay_payment_id;
+    updatedUser.subscription.lastOrderId = razorpay_order_id;
+    await updatedUser.save();
 
     res.status(200).json({
       success: true,
       message: 'Subscription successfully verified',
       data: {
-        userType: updatedUser?.userType,
-        subscription: updatedUser?.subscription
+        userType: updatedUser.userType,
+        subscription: updatedUser.subscription
       }
     });
   } catch (error) {

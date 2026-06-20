@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { formatUserResponse } = require('../utils/userResponse');
+const { applyPendingPlanChanges, getSubscriptionUsage } = require('../utils/subscriptionUtils');
 
 // @desc    Get user profile
 // @route   GET /api/profile
@@ -359,6 +360,23 @@ const toggleSavedManufacturer = async (req, res) => {
   }
 };
 
+// @desc    Get subscription usage (RFQ request limits)
+// @route   GET /api/profile/subscription-usage
+const getSubscriptionUsageHandler = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    await applyPendingPlanChanges(user);
+    const usage = await getSubscriptionUsage(user);
+    res.json({ success: true, data: usage });
+  } catch (error) {
+    console.error('Get subscription usage error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -366,6 +384,7 @@ module.exports = {
   getSettings,
   updateSettings,
   changePassword,
-  toggleSavedManufacturer
+  toggleSavedManufacturer,
+  getSubscriptionUsageHandler
 };
 

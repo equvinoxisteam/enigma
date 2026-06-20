@@ -31,6 +31,27 @@ const AdminCustomers = () => {
     );
   }) || [];
 
+  const handleManageSubscription = async (action, planType) => {
+    setIsUpdating(true);
+    try {
+      const token = localStorage.getItem('token');
+      await adminAPI.manageSubscription(selectedUser._id, { action, planType }, token);
+      showSuccess(`Subscription ${action} applied`);
+      dispatch(fetchAllUsers());
+      setSelectedUser((prev) => ({
+        ...prev,
+        subscription: {
+          ...prev.subscription,
+          status: action === 'pause' ? 'PAUSED' : action === 'deactivate' ? 'DEACTIVATED' : action === 'reactivate' || action === 'activate' ? 'ACTIVE' : prev.subscription?.status
+        }
+      }));
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to update subscription');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleUpgrade = async (userId, planType, userType, extra = {}) => {
     setIsUpdating(true);
     try {
@@ -214,6 +235,18 @@ const AdminCustomers = () => {
                     </button>
                   ))}
                 </div>
+              </section>
+
+              <section>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Subscription Controls</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <button type="button" disabled={isUpdating} onClick={() => handleManageSubscription('activate', selectedUser.subscription?.planType)} className="py-3 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase">Approve / Activate</button>
+                  <button type="button" disabled={isUpdating} onClick={() => handleManageSubscription('pause')} className="py-3 rounded-xl bg-amber-600/20 text-amber-300 border border-amber-500/30 text-[10px] font-black uppercase">Pause Plan</button>
+                  <button type="button" disabled={isUpdating} onClick={() => handleManageSubscription('deactivate')} className="py-3 rounded-xl bg-red-600/20 text-red-300 border border-red-500/30 text-[10px] font-black uppercase">Deactivate</button>
+                  <button type="button" disabled={isUpdating} onClick={() => handleManageSubscription('remove', 'FREE')} className="py-3 rounded-xl bg-white/5 text-gray-300 border border-white/10 text-[10px] font-black uppercase">Remove (24h buffer)</button>
+                  <button type="button" disabled={isUpdating} onClick={() => handleManageSubscription('reactivate')} className="py-3 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 text-[10px] font-black uppercase">Reactivate</button>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-3">Downgrades and removals apply after a 24-hour grace period. Upgrades apply immediately.</p>
               </section>
 
               <section>

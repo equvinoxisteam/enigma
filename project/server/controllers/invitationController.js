@@ -1,6 +1,13 @@
 const Invitation = require('../models/Invitation');
 const RFQ = require('../models/RFQ');
 const ManufacturerRequest = require('../models/ManufacturerRequest');
+const {
+  applyPendingPlanChanges,
+  isManufacturerSubscriptionActive,
+  getRfqRequestLimit,
+  countRfqRequestsInPeriod
+} = require('../utils/subscriptionUtils');
+const { hasFeature, FEATURE_KEYS } = require('../config/planFeatures');
 
 // @desc    Get invitations for manufacturer
 // @route   GET /api/invitations
@@ -80,12 +87,28 @@ const acceptInvitation = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
+    await applyPendingPlanChanges(req.user);
+
+    if (!isManufacturerSubscriptionActive(req.user)) {
+      return res.status(403).json({ message: 'Subscription is paused or inactive' });
+    }
+
     let manufacturerRequest = await ManufacturerRequest.findOne({
       rfqId: invitation.rfqId._id,
       manufacturerId: req.user._id
     });
 
     if (!manufacturerRequest) {
+      const requestLimit = getRfqRequestLimit(req.user);
+      if (!hasFeature(req.user, FEATURE_KEYS.RFQ_RESPOND) || requestLimit === 0) {
+        return res.status(403).json({ message: 'Upgrade to a paid plan to respond to invitations with RFQ requests' });
+      }
+      if (requestLimit !== null) {
+        const used = await countRfqRequestsInPeriod(req.user._id, req.user.subscription?.startsAt);
+        if (used >= requestLimit) {
+          return res.status(403).json({ message: `RFQ request limit reached (${used}/${requestLimit})` });
+        }
+      }
       manufacturerRequest = await ManufacturerRequest.create({
         rfqId: invitation.rfqId._id,
         manufacturerId: req.user._id,

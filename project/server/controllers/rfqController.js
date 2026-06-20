@@ -4,6 +4,12 @@ const Invitation = require('../models/Invitation');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 const { hasFeature, FEATURE_KEYS } = require('../config/planFeatures');
+const {
+  applyPendingPlanChanges,
+  isManufacturerSubscriptionActive,
+  getRfqRequestLimit,
+  countRfqRequestsInPeriod
+} = require('../utils/subscriptionUtils');
 
 // @desc    Create new RFQ
 // @route   POST /api/rfqs
@@ -15,7 +21,7 @@ const createRFQ = async (req, res) => {
 
     // Validate user role
     if (req.user.userType === 'MANUFACTURER') {
-      return res.status(403).json({ message: 'Only buyers can create RFQs' });
+      return res.status(403).json({ message: 'Manufacturers cannot create RFQs. Only buyers and hybrid accounts can publish RFQs. Upgrade your role or use a buyer account.' });
     }
 
     const rfqData = {
@@ -479,7 +485,33 @@ const requestRFQ = async (req, res) => {
     const manufacturerId = req.user._id;
 
     if (req.user.userType === 'BUYER') {
-      return res.status(403).json({ message: 'Only manufacturers can request RFQs' });
+      return res.status(403).json({ message: 'Only manufacturers and hybrid accounts can request RFQs. Buyers create RFQs instead.' });
+    }
+
+    await applyPendingPlanChanges(req.user);
+
+    if (!isManufacturerSubscriptionActive(req.user)) {
+      return res.status(403).json({ message: 'Your subscription is paused or inactive. Contact support or upgrade to request RFQs.' });
+    }
+
+    if (!hasFeature(req.user, FEATURE_KEYS.RFQ_RESPOND)) {
+      return res.status(403).json({ message: 'Upgrade to Standard or higher to send RFQ requests. Free plan is view-only.' });
+    }
+
+    const requestLimit = getRfqRequestLimit(req.user);
+    if (requestLimit === 0) {
+      return res.status(403).json({ message: 'Your plan does not include RFQ requests. Upgrade to Standard (20/year), Pro (40/year), or Enterprise (unlimited).' });
+    }
+
+    if (requestLimit !== null) {
+      const used = await countRfqRequestsInPeriod(manufacturerId, req.user.subscription?.startsAt);
+      if (used >= requestLimit) {
+        return res.status(403).json({
+          message: `Annual RFQ request limit reached (${used}/${requestLimit}). Upgrade your plan for more requests.`,
+          limit: requestLimit,
+          used
+        });
+      }
     }
 
     const rfq = await RFQ.findById(rfqId);
