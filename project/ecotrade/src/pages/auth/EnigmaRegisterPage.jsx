@@ -269,7 +269,14 @@ const EnigmaRegisterPage = () => {
         .reg-label { display:block; color:#01364a; font-size:0.82rem; font-weight:600; margin-bottom:0.4rem; }
         .reg-error { color:#dc2626; font-size:0.78rem; margin-top:0.3rem; }
         .reg-section-title { color:#01364a; font-size:1.2rem; font-weight:800; margin-bottom:1.25rem; }
-        .reg-check { accent-color:#4881F8; width:15px; height:15px; cursor:pointer; }
+        .reg-check { accent-color:#4881F8; width:16px; height:16px; min-width:16px; cursor:pointer; flex-shrink:0; }
+        .reg-check-label { display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; color:#01364a; font-size:0.875rem; font-weight:500; line-height:1.35; }
+        .reg-hint { color:rgba(1,54,74,0.5); font-size:0.78rem; margin-top:0.35rem; }
+        .reg-subsection { margin-top:2rem; padding-top:1.5rem; border-top:1px solid rgba(1,54,74,0.1); }
+        .reg-subsection-title { color:#01364a; font-size:1rem; font-weight:700; margin-bottom:1.25rem; }
+        .reg-nav-back { padding:0.7rem 1.5rem; border-radius:10px; border:1px solid rgba(1,54,74,0.15); background:#fff; color:rgba(1,54,74,0.7); font-size:0.9rem; font-weight:500; cursor:pointer; transition:all 0.2s; }
+        .reg-nav-back:disabled { opacity:0.35; cursor:not-allowed; }
+        .reg-nav-back:not(:disabled):hover { border-color:#4881F8; color:#4881F8; }
         select.reg-input option { background:#fff; color:#01364a; }
         @keyframes spin { to { transform:rotate(360deg); } }
       `}</style>
@@ -453,7 +460,7 @@ const EnigmaRegisterPage = () => {
                     placeholder="e.g. 29ABCDE1234F1Z5 (15-character GSTIN)"
                     className="reg-input"
                   />
-                  <p className="reg-error" style={{ color: 'rgba(255,255,255,0.35)', marginTop: '0.35rem' }}>
+                  <p className="reg-hint">
                     Optional. Indian GST format: 2-digit state + 10-char PAN + entity + Z + checksum.
                   </p>
                 </div>
@@ -489,17 +496,17 @@ const EnigmaRegisterPage = () => {
 
               {/* Manufacturing Capabilities */}
               {!isBuyer && (
-              <div style={{ marginTop:'2rem', paddingTop:'1.5rem', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                <h3 style={{ color:'rgba(255,255,255,0.85)', fontSize:'1rem', fontWeight:600, marginBottom:'1.25rem' }}>Manufacturing Capabilities</h3>
+              <div className="reg-subsection">
+                <h3 className="reg-subsection-title">Manufacturing Capabilities</h3>
                 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label className="reg-label">Manufacturing Types * (Select at least one)</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {manufacturingTypesOptions.map((type) => (
-                      <label key={type} style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:'0.85rem' }}>
+                      <label key={type} className="reg-check-label">
                         <input type="checkbox" checked={formData.manufacturingTypes.includes(type)}
                           onChange={() => handleArrayChange('manufacturingTypes', type)} className="reg-check" />
-                        {type.replace('_', ' ')}
+                        <span>{type.replace(/_/g, ' ')}</span>
                       </label>
                     ))}
                   </div>
@@ -536,10 +543,10 @@ const EnigmaRegisterPage = () => {
                   <label className="reg-label">Primary Materials</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {materialOptions.map((material) => (
-                      <label key={material} style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:'0.85rem' }}>
+                      <label key={material} className="reg-check-label">
                         <input type="checkbox" checked={formData.primaryMaterials.includes(material)}
                           onChange={() => handleArrayChange('primaryMaterials', material)} className="reg-check" />
-                        {material}
+                        <span>{material}</span>
                       </label>
                     ))}
                   </div>
@@ -557,10 +564,10 @@ const EnigmaRegisterPage = () => {
                   <label className="reg-label">Certifications</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {certificationOptions.map((cert) => (
-                      <label key={cert} style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:'0.85rem' }}>
+                      <label key={cert} className="reg-check-label">
                         <input type="checkbox" checked={formData.certifications.includes(cert)}
                           onChange={() => handleArrayChange('certifications', cert)} className="reg-check" />
-                        {cert.replace('_', ' ')}
+                        <span>{cert.replace(/_/g, ' ')}</span>
                       </label>
                     ))}
                   </div>
@@ -591,8 +598,8 @@ const EnigmaRegisterPage = () => {
 
               {/* Buyer Information */}
               {(isBuyer || isHybrid) && (
-              <div style={{ marginTop:'2rem', paddingTop:'1.5rem', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
-                <h3 style={{ color:'rgba(255,255,255,0.85)', fontSize:'1rem', fontWeight:600, marginBottom:'1.25rem' }}>Buyer Information</h3>
+              <div className="reg-subsection">
+                <h3 className="reg-subsection-title">Buyer Information</h3>
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -621,9 +628,8 @@ const EnigmaRegisterPage = () => {
           )}
 
           {/* Navigation Buttons */}
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:'2rem', paddingTop:'1.5rem', borderTop:'1px solid rgba(255,255,255,0.08)', alignItems:'center' }}>
-            <button type="button" onClick={handleBack} disabled={currentStep === 1}
-              style={{ padding:'0.7rem 1.5rem', borderRadius:'10px', border:'1px solid rgba(255,255,255,0.15)', background:'transparent', color: currentStep === 1 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)', cursor: currentStep === 1 ? 'not-allowed' : 'pointer', fontSize:'0.9rem', fontWeight:500, transition:'all 0.2s' }}>
+          <div className="reg-subsection" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'2rem' }}>
+            <button type="button" onClick={handleBack} disabled={currentStep === 1} className="reg-nav-back">
               Back
             </button>
             {currentStep < totalSteps ? (
