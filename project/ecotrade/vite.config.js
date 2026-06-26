@@ -7,6 +7,6 @@ export default defineConfig({
   plugins: [react()],
   assetsInclude: ['**/*.wasm'],
   optimizeDeps: {
-    exclude: ['occt-import-js'],
+    exclude: [],
   },
 })

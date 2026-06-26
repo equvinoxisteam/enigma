@@ -2,22 +2,25 @@ import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { getViewerFetchPath, getFileName } from '../utils/fileUtils';
 import { addLabeledAxes } from '../utils/threeAxisHelper';
 import axiosInstance from '../api/axios';
 import FileViewerFrame from './FileViewerFrame';
+import ViewerErrorState from './ViewerErrorState';
+
+const VIEWER_BG = '#f1f5f9';
 
 const STLViewer = ({
   fileUrl,
   fileName,
   width = '100%',
-  height = '400px',
-  backgroundColor = '#111827'
+  height = '420px'
 }) => {
   const mountRef = useRef(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const displayName = fileName || getFileName(fileUrl);
 
   useEffect(() => {
@@ -42,13 +45,13 @@ const STLViewer = ({
     const loadStl = async () => {
       try {
         setLoading(true);
-        setError(null);
+        setError(false);
 
         const fetchPath = getViewerFetchPath(fileUrl);
         const response = await axiosInstance.get(fetchPath, { responseType: 'arraybuffer' });
 
         if (!response.data || response.data.byteLength === 0) {
-          throw new Error('Empty STL file');
+          throw new Error('EMPTY_FILE');
         }
 
         const loader = new STLLoader();
@@ -60,9 +63,9 @@ const STLViewer = ({
         if (disposed || !mountEl) return;
 
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(backgroundColor);
+        scene.background = new THREE.Color(VIEWER_BG);
 
-        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100000);
+        const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100000);
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountEl.innerHTML = '';
@@ -70,16 +73,16 @@ const STLViewer = ({
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.75));
         const keyLight = new THREE.DirectionalLight(0xffffff, 1);
-        keyLight.position.set(1, 2, 3);
+        keyLight.position.set(4, 6, 5);
         scene.add(keyLight);
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.45);
-        fillLight.position.set(-2, -1, -1);
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+        fillLight.position.set(-3, -2, -4);
         scene.add(fillLight);
 
         const material = new THREE.MeshPhongMaterial({
           color: 0x4881f8,
-          specular: 0x444444,
-          shininess: 80
+          specular: 0x334155,
+          shininess: 70
         });
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -90,12 +93,14 @@ const STLViewer = ({
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z, 0.001);
 
-        addLabeledAxes(scene, maxDim);
+        addLabeledAxes(scene, maxDim * 0.85);
 
-        camera.position.set(center.x + maxDim, center.y + maxDim * 0.5, center.z + maxDim * 1.5);
+        const distance = maxDim * 1.65;
+        camera.position.set(center.x + distance * 0.7, center.y + distance * 0.45, center.z + distance);
         controls = new OrbitControls(camera, renderer.domElement);
         controls.target.copy(center);
         controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
         controls.update();
 
         resizeRenderer(camera);
@@ -115,10 +120,9 @@ const STLViewer = ({
         return () => {
           window.removeEventListener('resize', handleResize);
         };
-      } catch (fetchError) {
-        console.error('STL viewer error:', fetchError);
+      } catch {
         if (!disposed) {
-          setError('Failed to load STL preview.');
+          setError(true);
           setLoading(false);
         }
       }
@@ -150,26 +154,24 @@ const STLViewer = ({
       });
       cleanupInner?.then?.((fn) => fn?.());
     };
-  }, [fileUrl, backgroundColor]);
+  }, [fileUrl, retryKey]);
 
   return (
     <FileViewerFrame fileName={displayName} height={height} className={width !== '100%' ? '' : ''}>
-      <div ref={mountRef} className="w-full h-full" style={{ width }} />
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90 z-20">
+      <div ref={mountRef} className="absolute inset-0 w-full h-full" style={{ width }} />
+      {loading && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-20">
           <div className="text-center">
             <Loader2 className="animate-spin text-[#4881F8] mx-auto mb-2" size={32} />
-            <p className="text-sm text-gray-200">Loading 3D model...</p>
+            <p className="text-sm text-gray-600">Loading 3D preview...</p>
           </div>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/95 z-20">
-          <div className="text-center p-4">
-            <AlertCircle className="text-red-400 mx-auto mb-2" size={32} />
-            <p className="text-sm text-red-300">{error}</p>
-          </div>
-        </div>
+        <ViewerErrorState
+          hint="Try re-uploading your STL file. Make sure it is a valid mesh and under the upload size limit."
+          onRetry={() => setRetryKey((k) => k + 1)}
+        />
       )}
     </FileViewerFrame>
   );

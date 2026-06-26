@@ -272,11 +272,10 @@ const RFQPoolPage = () => {
               className="group relative bg-white border border-gray-100 rounded-[2.5rem] p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300"
             >
               {rfq.workpieces?.[0] && getWorkpieceFileUrl(rfq.workpieces[0]) && (
-                <div className="w-full lg:w-52 h-44 rounded-2xl overflow-hidden border border-gray-100 flex-shrink-0 bg-gray-900">
+                <div className="w-full lg:w-52 h-44 rounded-2xl overflow-hidden border border-gray-100 flex-shrink-0">
                   <CADFileViewer
                     workpiece={rfq.workpieces[0]}
                     height="176px"
-                    backgroundColor="#111827"
                   />
                 </div>
               )}

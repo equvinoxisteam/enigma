@@ -743,7 +743,7 @@ const MyRFQDetailPage = () => {
                           {workpiece.partType && <span><strong>Type:</strong> {workpiece.partType}</span>}
                         </div>
                         {workpiece.mainFile && (
-                          <CADFileViewer workpiece={workpiece} height="320px" backgroundColor="#111827" />
+                          <CADFileViewer workpiece={workpiece} height="320px" />
                         )}
                         {workpiece.extraFiles?.length > 0 && (
                           <div className="p-4 border-t border-gray-100">
@@ -766,7 +766,7 @@ const MyRFQDetailPage = () => {
               <div key={index} className="border border-gray-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-4">Workpiece {index + 1}</h3>
                 <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-                  <CADFileViewer workpiece={workpiece} height="400px" backgroundColor="#f9fafb" />
+                  <CADFileViewer workpiece={workpiece} height="420px" />
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>

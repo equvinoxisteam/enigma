@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileText, Layers } from 'lucide-react';
 import STLViewer from './STLViewer';
-import StaircaseViewer from './StaircaseViewer';
+import OcctStepViewer from './OcctStepViewer';
 import PDFViewer from './PDFViewer';
 import ImageViewer from './ImageViewer';
 import FileViewerFrame from './FileViewerFrame';
@@ -11,8 +11,7 @@ const CADFileViewer = ({
   workpiece,
   fileUrl,
   fileName,
-  height = '400px',
-  backgroundColor = '#111827'
+  height = '420px'
 }) => {
   const url = fileUrl || getWorkpieceFileUrl(workpiece);
   const displayName = fileName || workpiece?.mainFile?.name || getFileName(url);
@@ -33,18 +32,16 @@ const CADFileViewer = ({
         fileUrl={url}
         fileName={displayName}
         height={height}
-        backgroundColor={backgroundColor}
       />
     );
   }
 
   if (kind === 'step') {
     return (
-      <StaircaseViewer
+      <OcctStepViewer
         fileUrl={url}
         fileName={displayName}
         height={height}
-        backgroundColor={backgroundColor}
       />
     );
   }

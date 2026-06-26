@@ -2,6 +2,7 @@ const RFQ = require('../models/RFQ');
 const User = require('../models/User');
 const { hasFeature, FEATURE_KEYS } = require('../config/planFeatures');
 const { sanitizePublicManufacturerProfile } = require('../utils/publicProfileUtils');
+const { isRfqOwnedByUser } = require('../utils/rfqVisibilityUtils');
 
 const PLAN_RANK_SWITCH = {
   $switch: {
@@ -39,7 +40,8 @@ const searchRFQsController = async (req, res) => {
 
     // Build query
     const query = {
-      status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] } // Only show open RFQs
+      status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] }, // Only show open RFQs
+      buyerId: { $ne: req.user._id }
     };
 
     // Text search on title and description
@@ -263,7 +265,8 @@ const getRecommendationsController = async (req, res) => {
 
     const { userType, manufacturerSettings } = user;
     let query = {
-      status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] }
+      status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] },
+      buyerId: { $ne: req.user._id }
     };
 
     // If manufacturer, recommend RFQs matching their skills
@@ -328,6 +331,7 @@ const aiSearchController = async (req, res) => {
 
     let rfqQuery = {
       status: { $in: ['OPEN_FOR_REQUESTS', 'REQUESTS_PENDING'] },
+      buyerId: { $ne: req.user._id },
       $or: [
         { title: { $regex: query, $options: 'i' } },
         { description: { $regex: query, $options: 'i' } }

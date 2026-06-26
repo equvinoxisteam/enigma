@@ -1,3 +1,3 @@
-import StaircaseViewer from './StaircaseViewer';
+import OcctStepViewer from './OcctStepViewer';
 
-export default StaircaseViewer;
+export default OcctStepViewer;

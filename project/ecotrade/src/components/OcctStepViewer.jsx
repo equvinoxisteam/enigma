@@ -1,18 +1,22 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { getViewerFetchPath } from '../utils/fileUtils';
 import { buildStepMesh } from '../utils/stepMeshBuilder';
 import { addLabeledAxes } from '../utils/threeAxisHelper';
 import { loadOcct } from '../utils/occtLoader';
 import axiosInstance from '../api/axios';
 import FileViewerFrame from './FileViewerFrame';
+import ViewerErrorState from './ViewerErrorState';
 
-const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor = '#111827' }) => {
+const VIEWER_BG = '#f1f5f9';
+
+const OcctStepViewer = ({ fileUrl, fileName, height = '420px' }) => {
   const mountRef = useRef(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!mountRef.current || !fileUrl) return;
@@ -27,24 +31,29 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor =
     const loadModel = async () => {
       try {
         setLoading(true);
-        setError(null);
+        setError(false);
 
         const fetchPath = getViewerFetchPath(fileUrl);
         const response = await axiosInstance.get(fetchPath, { responseType: 'arraybuffer' });
+
+        if (!response.data || response.data.byteLength === 0) {
+          throw new Error('EMPTY_FILE');
+        }
+
         const occt = await loadOcct();
         const result = occt.ReadStepFile(new Uint8Array(response.data), null);
 
         if (!result?.meshes?.length) {
-          throw new Error('No geometry found in STEP file');
+          throw new Error('NO_GEOMETRY');
         }
 
         if (disposed || !mountEl) return;
 
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(backgroundColor);
+        scene.background = new THREE.Color(VIEWER_BG);
 
-        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100000);
-        renderer = new THREE.WebGLRenderer({ antialias: true });
+        const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100000);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountEl.innerHTML = '';
         mountEl.appendChild(renderer.domElement);
@@ -59,10 +68,13 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor =
         };
         resizeRenderer();
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-        dirLight.position.set(2, 3, 4);
-        scene.add(dirLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        keyLight.position.set(4, 6, 5);
+        scene.add(keyLight);
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+        fillLight.position.set(-3, -2, -4);
+        scene.add(fillLight);
 
         const group = new THREE.Group();
         for (const resultMesh of result.meshes) {
@@ -77,12 +89,14 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor =
         const maxDim = Math.max(size.x, size.y, size.z, 0.001);
 
         group.position.sub(center);
-        addLabeledAxes(scene, maxDim);
+        addLabeledAxes(scene, maxDim * 0.85);
 
-        camera.position.set(maxDim, maxDim * 0.6, maxDim * 1.8);
+        const distance = maxDim * 1.65;
+        camera.position.set(distance * 0.7, distance * 0.45, distance);
         controls = new OrbitControls(camera, renderer.domElement);
         controls.target.set(0, 0, 0);
         controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
         controls.update();
 
         const animate = () => {
@@ -112,10 +126,9 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor =
             }
           });
         };
-      } catch (err) {
-        console.error('OCCT STEP viewer error:', err);
+      } catch {
         if (!disposed) {
-          setError('Failed to load STEP preview.');
+          setError(true);
           setLoading(false);
         }
       }
@@ -135,26 +148,24 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '400px', backgroundColor =
       }
       cleanupPromise?.then?.((fn) => fn?.());
     };
-  }, [fileUrl, backgroundColor]);
+  }, [fileUrl, retryKey]);
 
   return (
     <FileViewerFrame fileName={fileName} height={height}>
-      <div ref={mountRef} className="w-full h-full" />
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90 z-20">
+      <div ref={mountRef} className="absolute inset-0 w-full h-full" />
+      {loading && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-20">
           <div className="text-center">
             <Loader2 className="animate-spin text-[#4881F8] mx-auto mb-2" size={32} />
-            <p className="text-sm text-gray-200">Loading STEP model...</p>
+            <p className="text-sm text-gray-600">Loading 3D preview...</p>
           </div>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/95 z-20">
-          <div className="text-center p-4">
-            <AlertCircle className="text-red-400 mx-auto mb-2" size={32} />
-            <p className="text-sm text-red-300">{error}</p>
-          </div>
-        </div>
+        <ViewerErrorState
+          hint="Try re-uploading your STEP file, or export as STL for the most reliable 3D preview."
+          onRetry={() => setRetryKey((k) => k + 1)}
+        />
       )}
     </FileViewerFrame>
   );

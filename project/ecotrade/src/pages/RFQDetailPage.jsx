@@ -14,6 +14,8 @@ const RFQDetailPage = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
   const canRequest = hasFeature(user, FEATURE_KEYS.RFQ_RESPOND);
+  const buyerId = rfq?.buyerId?._id?.toString() || rfq?.buyerId?.toString();
+  const isOwnRfq = Boolean(user?._id && buyerId && buyerId === user._id.toString());
   const [rfq, setRfq] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -35,10 +37,10 @@ const RFQDetailPage = () => {
   }, [id]);
 
   useEffect(() => {
-    if (searchParams.get('request') === 'true' && canRequest) {
+    if (searchParams.get('request') === 'true' && canRequest && !isOwnRfq) {
       setShowRequestModal(true);
     }
-  }, [searchParams, canRequest]);
+  }, [searchParams, canRequest, isOwnRfq]);
 
   const fetchRFQ = async () => {
     setLoading(true);
@@ -46,7 +48,7 @@ const RFQDetailPage = () => {
       const response = await rfqAPI.getById(id);
       setRfq(response.data);
     } catch (error) {
-      showError('Failed to load RFQ: ' + (error.response?.data?.message || error.message));
+      showError('Unable to load this RFQ right now. Please try again in a moment.');
       navigate('/rfqs-pool');
     } finally {
       setLoading(false);
@@ -95,7 +97,11 @@ const RFQDetailPage = () => {
             <p className="text-gray-500">RFQ #{rfq._id.toString().slice(-6)}</p>
           </div>
           {rfq.status === 'OPEN_FOR_REQUESTS' || rfq.status === 'REQUESTS_PENDING' ? (
-            canRequest ? (
+            isOwnRfq ? (
+              <Link to="/my-rfqs" className="px-6 py-2.5 bg-gray-100 text-[#01364a] rounded-xl font-bold text-center border border-gray-200">
+                Your RFQ — manage in My RFQs
+              </Link>
+            ) : canRequest ? (
               <button type="button" onClick={() => setShowRequestModal(true)} className="px-6 py-2.5 bg-[#4881F8] text-white rounded-xl font-bold hover:bg-[#3b6fe0]">
                 Request RFQ
               </button>
@@ -169,7 +175,7 @@ const RFQDetailPage = () => {
               <div>
                 <h4 className="font-bold mb-3 text-[#01364a]">STL Preview</h4>
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <CADFileViewer workpiece={stlWorkpieces[0]} height="400px" backgroundColor="#111827" />
+                  <CADFileViewer workpiece={stlWorkpieces[0]} height="420px" />
                 </div>
               </div>
             )}
@@ -207,7 +213,7 @@ const RFQDetailPage = () => {
                   <h3 className="text-lg font-bold mb-4">Workpiece {index + 1}</h3>
                   {showStl ? (
                     <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
-                      <CADFileViewer workpiece={workpiece} height="400px" backgroundColor="#f9fafb" />
+                      <CADFileViewer workpiece={workpiece} height="420px" />
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500 mb-4 p-4 bg-gray-50 rounded-lg">

@@ -376,12 +376,11 @@ const StartRFQPage = () => {
                         Technical Model (STL / STEP / PDF / 2D) <div className="cursor-help" title="Upload CAD or drawing for AI analysis"><Info size={12} className="text-gray-200" /></div>
                       </label>
                       {wp.mainFileUrl ? (
-                         <div className="bg-gray-900 rounded-[2.5rem] overflow-hidden relative group/viewer">
+                         <div className="rounded-[2.5rem] overflow-hidden relative group/viewer border border-gray-100">
                             <CADFileViewer
                               fileUrl={wp.mainFileUrl}
                               fileName={wp.mainFileName || wp.mainFile?.name}
-                              height="400px"
-                              backgroundColor="#111827"
+                              height="420px"
                             />
                             <button 
                               type="button"
