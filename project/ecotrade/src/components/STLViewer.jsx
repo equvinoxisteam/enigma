@@ -169,7 +169,10 @@ const STLViewer = ({
       )}
       {error && (
         <ViewerErrorState
-          hint="Try re-uploading your STL file. Make sure it is a valid mesh and under the upload size limit."
+          fileName={displayName}
+          uploaded
+          title="3D preview unavailable"
+          hint="Your STL file is saved. Try re-uploading or check the file is a valid mesh under 150 MB."
           onRetry={() => setRetryKey((k) => k + 1)}
         />
       )}

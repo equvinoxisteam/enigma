@@ -69,18 +69,42 @@ const isAllowedUrl = (targetUrl) => {
   }
 };
 
+const CONTENT_TYPES = {
+  '.pdf': 'application/pdf',
+  '.stl': 'model/stl',
+  '.step': 'application/step',
+  '.stp': 'application/step',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.dxf': 'application/dxf',
+  '.dwg': 'application/acad',
+  '.svg': 'image/svg+xml'
+};
+
+const guessContentType = (keyOrName) => {
+  const ext = path.extname(keyOrName || '').toLowerCase();
+  return CONTENT_TYPES[ext] || 'application/octet-stream';
+};
+
+const setInlineFileHeaders = (res, keyOrName, contentType) => {
+  const type = contentType || guessContentType(keyOrName);
+  const safeName = path.basename(keyOrName || 'file').replace(/"/g, '');
+  res.setHeader('Content-Type', type);
+  res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+};
+
 const streamS3Object = async (key, res) => {
   const result = await s3Client.send(new GetObjectCommand({
     Bucket: getBucketName(),
     Key: key
   }));
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Content-Type', result.ContentType || 'application/octet-stream');
+  setInlineFileHeaders(res, key, result.ContentType || guessContentType(key));
   if (result.ContentLength) {
     res.setHeader('Content-Length', String(result.ContentLength));
   }
-  res.setHeader('Cache-Control', 'public, max-age=3600');
 
   if (result.Body && typeof result.Body.pipe === 'function') {
     result.Body.pipe(res);
@@ -97,8 +121,7 @@ const streamLocalUpload = (filename, res) => {
     res.status(404).json({ message: 'File not found' });
     return;
   }
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
+  setInlineFileHeaders(res, filename);
   res.sendFile(filePath);
 };
 

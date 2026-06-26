@@ -163,7 +163,10 @@ const OcctStepViewer = ({ fileUrl, fileName, height = '420px' }) => {
       )}
       {error && (
         <ViewerErrorState
-          hint="Try re-uploading your STEP file, or export as STL for the most reliable 3D preview."
+          fileName={fileName}
+          uploaded
+          title="3D preview unavailable"
+          hint="Your STEP/STP file is saved. STL gives the most reliable 3D preview — you can continue with this file or re-upload as STL."
           onRetry={() => setRetryKey((k) => k + 1)}
         />
       )}

@@ -22,6 +22,9 @@ const PDF_EXTS = ['pdf'];
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
 const TWO_D_EXTS = ['dxf', 'dwg'];
 
+export const SUPPORTED_TECHNICAL_EXTENSIONS = ['stl', 'step', 'stp', 'pdf', 'dxf', 'png', 'jpg', 'jpeg', 'dwg', 'svg'];
+export const SUPPORTED_TECHNICAL_LABEL = 'STL · STEP · STP · PDF · DXF · PNG · DWG (max 150 MB)';
+
 export const getFileKind = (url, fileName = '') => {
   const ext = getFileExtension(url) || getFileExtension(fileName);
   if (STL_EXTS.includes(ext)) return 'stl';

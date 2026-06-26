@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axiosInstance from '../api/axios';
-import { getViewerFetchPath } from '../utils/fileUtils';
+import { fetchAuthenticatedBlobUrl, revokeBlobUrl } from '../utils/fetchAuthenticatedBlob';
 
 /**
  * Loads images that may be on private S3 or need auth proxy (axios + blob URL).
@@ -10,8 +9,8 @@ const AuthenticatedImage = ({ src, alt, className, fallback }) => {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    let objectUrl = '';
     let cancelled = false;
+    let objectUrl = '';
 
     const load = async () => {
       if (!src) {
@@ -26,20 +25,8 @@ const AuthenticatedImage = ({ src, alt, className, fallback }) => {
         return;
       }
 
-      const needsAuthFetch =
-        src.includes('amazonaws.com') ||
-        src.includes('/api/files/proxy');
-
-      if (!needsAuthFetch) {
-        setBlobUrl(src);
-        setFailed(false);
-        return;
-      }
-
       try {
-        const fetchPath = getViewerFetchPath(src);
-        const response = await axiosInstance.get(fetchPath, { responseType: 'blob' });
-        objectUrl = URL.createObjectURL(response.data);
+        objectUrl = await fetchAuthenticatedBlobUrl(src);
         if (!cancelled) {
           setBlobUrl(objectUrl);
           setFailed(false);
@@ -56,7 +43,7 @@ const AuthenticatedImage = ({ src, alt, className, fallback }) => {
 
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      revokeBlobUrl(objectUrl);
     };
   }, [src]);
 

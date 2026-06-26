@@ -6,7 +6,7 @@ import { rfqAPI } from '../api/rfqAPI';
 import { uploadAPI } from '../api/uploadAPI';
 import CADFileViewer from '../components/CADFileViewer';
 import { getStlDimensionsFromFile } from '../utils/stlDimensions';
-import { getFileExtension } from '../utils/fileUtils';
+import { getFileExtension, SUPPORTED_TECHNICAL_LABEL } from '../utils/fileUtils';
 import { ArrowLeft, ArrowRight, Upload, X, File, FileText, Save, Box, Info, Send, Shield, Zap, Globe } from 'lucide-react';
 import Button from '../components/ui/Button';
 import OtherTextInput from '../components/ui/OtherTextInput';
@@ -188,7 +188,7 @@ const StartRFQPage = () => {
     if (activeTab === 'workpieces') {
       const wp = formData.workpieces[0];
       if (!wp.mainFileUrl) {
-        showError('Please upload a technical file (STL, STEP, PDF, or 2D drawing) before continuing.');
+        showError('Please upload a technical file (STL, STEP, STP, PDF, DXF, PNG, or DWG) before continuing.');
         return;
       }
       if (!wp.technology) {
@@ -373,7 +373,7 @@ const StartRFQPage = () => {
                   <div key={index} className="space-y-8">
                     <div className="relative group">
                       <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
-                        Technical Model (STL / STEP / PDF / 2D) <div className="cursor-help" title="Upload CAD or drawing for AI analysis"><Info size={12} className="text-gray-200" /></div>
+                        Technical Model ({SUPPORTED_TECHNICAL_LABEL}) <div className="cursor-help" title="Upload CAD or drawing for AI analysis"><Info size={12} className="text-gray-200" /></div>
                       </label>
                       {wp.mainFileUrl ? (
                          <div className="rounded-[2.5rem] overflow-hidden relative group/viewer border border-gray-100">
@@ -403,7 +403,7 @@ const StartRFQPage = () => {
                                 {uploading ? <Loader2 size={32} className="animate-spin" /> : <Upload size={32} />}
                               </div>
                               <p className="text-xl font-black text-[#01364a]">Import Geometry or Drawing</p>
-                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">STL, STEP, PDF, DXF, DWG, PNG (MAX 150MB)</p>
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{SUPPORTED_TECHNICAL_LABEL}</p>
                            </div>
                         </div>
                       )}
