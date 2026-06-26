@@ -5,6 +5,7 @@ import { ArrowRight, Search } from 'lucide-react';
 import AIIcon from '../components/icons/AIIcon';
 import { rfqAPI } from '../api/rfqAPI';
 import { searchAPI } from '../api/searchAPI';
+import { profileAPI } from '../api/profileAPI';
 import { getUserDisplayName } from '../utils/userDisplay';
 
 const StatCard = ({ label, value, hint, onClick }) => (
@@ -52,6 +53,7 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [recentRequests, setRecentRequests] = useState([]);
   const [newMatchingRFQs, setNewMatchingRFQs] = useState([]);
+  const [subscriptionUsage, setSubscriptionUsage] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token') || user?.token;
@@ -86,6 +88,7 @@ const DashboardPage = () => {
       }
 
       if (isManufacturer) {
+        profileAPI.getSubscriptionUsage().then((r) => setSubscriptionUsage(r.data)).catch(() => {});
         const [poolResult, acceptedResult, myResult] = await Promise.allSettled([
           rfqAPI.getRFQPool({ page: 1, limit: 1 }),
           rfqAPI.getAcceptedRFQs(),
@@ -172,6 +175,40 @@ const DashboardPage = () => {
           </span>
         </div>
       </section>
+
+      {/* Manufacturer subscription status */}
+      {isManufacturer && subscriptionUsage && (
+        <section className={`rounded-2xl border p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
+          subscriptionUsage.canRequestRfqs ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Your Plan</p>
+            <p className="text-lg font-black text-[#01364a]">
+              {subscriptionUsage.planType || user?.subscription?.planType || 'FREE'}
+              {subscriptionUsage.status && subscriptionUsage.status !== 'ACTIVE' && (
+                <span className="ml-2 text-sm font-semibold text-amber-700">({subscriptionUsage.status})</span>
+              )}
+            </p>
+            {subscriptionUsage.rfqRequestsLimit === 0 ? (
+              <p className="text-sm text-amber-800 mt-1">View-only on Free — upgrade to Standard, Pro, or Enterprise to send RFQ requests.</p>
+            ) : subscriptionUsage.rfqRequestsLimit !== null ? (
+              <p className="text-sm text-gray-700 mt-1">
+                RFQ requests: <strong>{subscriptionUsage.rfqRequestsUsed ?? 0}</strong> / {subscriptionUsage.rfqRequestsLimit} this period
+              </p>
+            ) : (
+              <p className="text-sm text-gray-700 mt-1">Unlimited RFQ requests on your plan.</p>
+            )}
+            {subscriptionUsage.pendingPlanType && (
+              <p className="text-xs text-amber-700 mt-1">Downgrade to {subscriptionUsage.pendingPlanType} scheduled — 24h grace period.</p>
+            )}
+          </div>
+          {!subscriptionUsage.canRequestRfqs && (
+            <Link to="/pricing" className="px-6 py-3 bg-[#4881F8] text-white rounded-xl font-bold text-sm text-center shrink-0">
+              View Plans & Upgrade
+            </Link>
+          )}
+        </section>
+      )}
 
       {/* AI Search */}
       <section

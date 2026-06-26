@@ -703,7 +703,7 @@ const ProfilePage = () => {
                       }}
                       className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
                     />
-                    <span className="text-sm text-gray-700">{tech.replace('_', ' ')}</span>
+                    <span className="text-sm text-gray-700">{tech.replace(/_/g, ' ')}</span>
                   </label>
                 ))}
               </div>
@@ -808,7 +808,7 @@ const ProfilePage = () => {
                       onChange={(e) => handleArrayChange('certifications', cert, e.target.checked)}
                       className="w-4 h-4 text-[#4881F8] border-gray-300 rounded focus:ring-[#4881F8]"
                     />
-                    <span className="text-sm text-gray-700">{cert.replace('_', ' ')}</span>
+                    <span className="text-sm text-gray-700">{cert.replace(/_/g, ' ')}</span>
                   </label>
                 ))}
               </div>

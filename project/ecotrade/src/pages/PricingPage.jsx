@@ -107,6 +107,7 @@ const PricingPage = () => {
 
   const currentPlan = user?.subscription?.planType || 'FREE';
   const isBuyerOnly = user?.userType === 'BUYER';
+  const isHybrid = user?.userType === 'HYBRID';
 
   return (
     <div className="w-full py-4 sm:py-6">
@@ -116,6 +117,11 @@ const PricingPage = () => {
           Buyers and Hybrid accounts create RFQs. Pure manufacturers browse and request RFQs based on their plan.
           Admin approves upgrades — downgrades include a 24-hour grace period.
         </p>
+        {isHybrid && (
+          <p className="text-sm text-[#4881F8] font-semibold mt-3">
+            Hybrid account: buyer features are free. Plans below apply to your manufacturer (seller) capabilities.
+          </p>
+        )}
       </div>
 
       {!isBuyerOnly && (

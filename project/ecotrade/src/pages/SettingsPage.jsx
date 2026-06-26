@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Lock, Bell, Globe, Palette, Save } from 'lucide-react';
+import { Lock, Bell, Globe, Palette, Save, CreditCard } from 'lucide-react';
 import { profileAPI } from '../api/profileAPI';
+import { Link } from 'react-router-dom';
+import { formatRfqLimit } from '../config/planFeatures';
 
 const SettingsPage = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
   const [activeSection, setActiveSection] = useState('account');
   const [loading, setLoading] = useState(false);
+  const [subscriptionUsage, setSubscriptionUsage] = useState(null);
   const [settings, setSettings] = useState({
     password: '',
     newPassword: '',
@@ -55,7 +58,10 @@ const SettingsPage = () => {
       }
     };
     fetchSettings();
-  }, [showError]);
+    if (user?.userType === 'MANUFACTURER' || user?.userType === 'HYBRID') {
+      profileAPI.getSubscriptionUsage().then((r) => setSubscriptionUsage(r.data)).catch(() => {});
+    }
+  }, [showError, user?.userType]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -132,6 +138,7 @@ const SettingsPage = () => {
 
   const sections = [
     { id: 'account', label: 'Account & Security', icon: Lock },
+    ...(user?.userType !== 'BUYER' ? [{ id: 'subscription', label: 'Subscription', icon: CreditCard }] : []),
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'preferences', label: 'Preferences', icon: Globe }
   ];
@@ -218,6 +225,61 @@ const SettingsPage = () => {
               </form>
             </div>
 
+          </div>
+        )}
+
+        {/* Subscription */}
+        {activeSection === 'subscription' && (
+          <div className="p-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Manufacturer Plan</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Your plan controls RFQ pool access, profile visibility, and how many requests you can send per year.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                  <p className="text-xs font-bold uppercase text-gray-400 mb-1">Current Plan</p>
+                  <p className="text-2xl font-black text-[#01364a]">
+                    {subscriptionUsage?.planType || user?.subscription?.planType || 'FREE'}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">Status: {subscriptionUsage?.status || user?.subscription?.status || 'ACTIVE'}</p>
+                </div>
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                  <p className="text-xs font-bold uppercase text-gray-400 mb-1">RFQ Requests</p>
+                  <p className="text-2xl font-black text-[#01364a]">
+                    {subscriptionUsage?.rfqRequestsLimit === null
+                      ? 'Unlimited'
+                      : `${subscriptionUsage?.rfqRequestsUsed ?? 0} / ${subscriptionUsage?.rfqRequestsLimit ?? 0}`}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">{formatRfqLimit(subscriptionUsage?.rfqRequestsLimit ?? 0)}</p>
+                </div>
+              </div>
+              {subscriptionUsage?.pendingPlanType && (
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  Downgrade to {subscriptionUsage.pendingPlanType} is scheduled — 24-hour grace period active.
+                </p>
+              )}
+              {!subscriptionUsage?.canRequestRfqs && (
+                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  You cannot send RFQ requests on your current plan. Upgrade to Standard (20/yr), Pro (40/yr), or Enterprise (unlimited).
+                </p>
+              )}
+              <Link
+                to="/pricing"
+                className="inline-block px-6 py-3 bg-[#4881F8] text-white rounded-xl font-bold text-sm hover:bg-blue-600 transition-colors"
+              >
+                View Plans & Request Upgrade
+              </Link>
+            </div>
+            <div className="border-t border-gray-200 pt-6 text-sm text-gray-600">
+              <h4 className="font-semibold text-[#01364a] mb-2">Plan limits</h4>
+              <ul className="space-y-1 list-disc list-inside">
+                <li>Free — view RFQ pool only, no requests</li>
+                <li>Standard — ₹3,42,000/yr, 20 RFQ requests</li>
+                <li>Pro — ₹5,22,000/yr, 40 RFQ requests, verified badge</li>
+                <li>Enterprise — ₹15,75,000/yr, unlimited requests, top placement</li>
+              </ul>
+            </div>
           </div>
         )}
 
